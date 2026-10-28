@@ -12,17 +12,34 @@ async function load(){
   const ok=D.tickers.filter(t=>t.status==="ok");
   const cp=ok.reduce((a,t)=>a+t.call_premium,0),pp=ok.reduce((a,t)=>a+t.put_premium,0);
   $("#hdrStats").innerHTML=`<div>Call prem <b class="C">$${money(cp)}</b></div><div>Put prem <b class="P">$${money(pp)}</b></div><div>P/C prem <b>${(pp/cp).toFixed(2)}</b></div><div>Tape rows <b>${D.flow.length}</b></div>`;
-  chips();leaders();overview();render();
+  chips();board();leaders();overview();render();
+}
+function board(){
+  const b=D.sentiment_board;if(!b){$("#sentboard").style.display="none";return}
+  const tot=b.bull_total+b.bear_total,bp=tot?b.bull_total/tot*100:50;
+  if(!tot){$("#sbStrip").innerHTML=`<div class="sb-pct">No inferred bullish/bearish flow yet: the latest quotes are outside the trading session, so trade side can't be inferred. Updates after the next market-hours refresh.</div>`}else
+  {$("#sbStrip").innerHTML=`<div><div class="lbl">Bullish premium</div><div class="val g">$${money(b.bull_total)}</div><div class="sb-pct">${n(b.bull_orders)} orders</div></div>
+   <div class="sb-ratio" title="Bullish share of inferred directional premium"><i style="width:${bp.toFixed(1)}%"></i></div>
+   <div style="text-align:right"><div class="lbl">Bearish premium</div><div class="val r">$${money(b.bear_total)}</div><div class="sb-pct">${n(b.bear_orders)} orders</div></div>
+   <div class="sb-pct"><b class="C">${bp.toFixed(0)}%</b> bull / <b class="P">${(100-bp).toFixed(0)}%</b> bear<br><span class="muted">Bull:Bear ${b.bear_total?(b.bull_total/b.bear_total).toFixed(2):"–"}</span></div>`;}
+  const fill=(id,rows)=>{const top=rows.length?rows[0].premium:1;
+    $(id).innerHTML=rows.length?rows.map(r=>`<tr data-t="${r.ticker}" class="${st.tk.size===1&&st.tk.has(r.ticker)?"sel":""}" style="background-size:${Math.max(2,r.premium/top*100).toFixed(1)}% 100%"><td>${r.ticker}</td><td>${n(r.orders)}</td><td>${money(r.premium)}</td></tr>`).join(""):`<tr class="empty"><td colspan="3">No inferred flow available</td></tr>`;
+    $(id).querySelectorAll("tr[data-t]").forEach(e=>e.onclick=()=>{pick(e.dataset.t);document.querySelector(".tablewrap").scrollIntoView({behavior:"smooth"})});};
+  fill("#sbBull",b.bullish);fill("#sbBear",b.bearish);
+  const src=b.side_sources||{},cached=Object.keys(src).filter(k=>src[k]==="cached"),na=Object.keys(src).filter(k=>src[k]==="unavailable");
+  let extra="";if(cached.length)extra+=` Sides for ${cached.join(", ")} carried from the last in-session snapshot (current quotes are pre-market/after-hours).`;
+  if(na.length)extra+=` No side data for ${na.join(", ")} (quotes not from the trading session).`;
+  $("#sbNote").dataset.base=$("#sbNote").dataset.base||$("#sbNote").textContent;$("#sbNote").textContent=$("#sbNote").dataset.base+extra;
 }
 function tick(t){return D.tickers.find(x=>x.ticker===t)}
 function chips(){
   const c=$("#chips");c.innerHTML=`<button class="chip ${st.tk.size?"":"on"}" data-t="ALL">All watchlist</button>`+WATCH.map(t=>{const x=tick(t);const ch=x&&x.change_pct!=null?x.change_pct:null;
     return `<button class="chip ${st.tk.has(t)?"on":""} ${x&&x.status==="ok"?"":"bad"}" data-t="${t}" title="${x?(x.name||x.message||""):""}">${t}${ch!=null?`<span class="d ${ch>=0?"C":"P"}">${ch>=0?"+":""}${ch.toFixed(1)}%</span>`:""}</button>`}).join("");
-  c.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{const t=b.dataset.t;if(t==="ALL")st.tk.clear();else st.tk.has(t)?st.tk.delete(t):st.tk.add(t);chips();render();detail(t==="ALL"?null:t)});
+  c.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{const t=b.dataset.t;if(t==="ALL")st.tk.clear();else st.tk.has(t)?st.tk.delete(t):st.tk.add(t);chips();board();render();detail(t==="ALL"?null:t)});
 }
 function leaders(){
   const s=D.summary,row=t=>{const x=tick(t);return `<div data-t="${t}"><b>${t}</b> <span class="muted">${x.bias_score>0?"+":""}${x.bias_score} · P/C ${x.pc_vol??"–"}</span></div>`};
-  $("#leaders").innerHTML=`<div class="lead"><div><h4 class="g">Bullish tilt</h4>${s.bullish.map(row).join("")||'<span class="muted">none</span>'}</div><div><h4 class="r">Bearish tilt</h4>${s.bearish.map(row).join("")||'<span class="muted">none</span>'}</div></div><div class="muted" style="margin-top:6px;font-size:11px">Score = (inferred bullish − bearish premium) ÷ total, across the largest tape rows. Inferred, not confirmed.</div>`;
+  $("#leaders").innerHTML=`<div class="lead"><div><h4 class="g">Bullish tilt</h4>${s.bullish.map(row).join("")||'<span class="muted">none</span>'}</div><div><h4 class="r">Bearish tilt</h4>${s.bearish.map(row).join("")||'<span class="muted">none</span>'}</div></div><div class="muted" style="margin-top:6px;font-size:11px">Score = (inferred bullish − bearish premium) ÷ total, across all session-traded contracts. Inferred, not confirmed.</div>`;
   $("#leaders").querySelectorAll("[data-t]").forEach(e=>e.onclick=()=>pick(e.dataset.t));
 }
 function overview(){
@@ -31,7 +48,7 @@ function overview(){
     return `<tr data-t="${t}"><td><b>${t}</b>${x.name_ok?"":' <span class="warn">⚠</span>'}</td><td>${x.spot}</td><td class="${x.pc_vol>1?"P":"C"}">${x.pc_vol??"–"}</td><td>${money(x.call_premium)}</td><td>${money(x.put_premium)}</td><td>${x.max_pain??"–"}</td></tr>`}).join("");
   $("#overview").querySelectorAll("tr[data-t]").forEach(e=>e.onclick=()=>pick(e.dataset.t));
 }
-function pick(t){st.tk=new Set([t]);chips();render();detail(t)}
+function pick(t){st.tk=new Set([t]);chips();board();render();detail(t)}
 function detail(t){
   if(!t){$("#tkTitle").textContent="Ticker detail";$("#tkDetail").innerHTML='<span class="muted">Pick a ticker chip to see details.</span>';return}
   const x=tick(t);$("#tkTitle").textContent=`${t} · ${x&&x.name?x.name:""}`;

@@ -54,6 +54,12 @@ def sentiment(cp, side):
     if side == "bid": return "bearish" if cp == "C" else "bullish"
     return "neutral"
 
+SIDES_PATH = "data/sides.json"
+try:
+    SIDE_CACHE = json.load(open(SIDES_PATH))
+except Exception:
+    SIDE_CACHE = {}
+
 def process(sym, expected):
     tk = yf.Ticker(sym)
     info = {}
@@ -118,6 +124,29 @@ def process(sym, expected):
     cvol = sum(c["vol"] for c in all_contracts if c["cp"] == "C"); pvol = sum(c["vol"] for c in all_contracts if c["cp"] == "P")
     coi = sum(c["oi"] for c in all_contracts if c["cp"] == "C"); poi = sum(c["oi"] for c in all_contracts if c["cp"] == "P")
     cprem = sum(c["premium"] for c in all_contracts if c["cp"] == "C"); pprem = sum(c["premium"] for c in all_contracts if c["cp"] == "P")
+    # Side inference needs bid/ask quotes from the same session as the trades. Outside that window
+    # (next-day pre-market, weekends) Yahoo's bid/ask are reset/refreshed, so reuse the sides saved
+    # by the last in-session run instead of re-inferring from mismatched quotes.
+    now = dt.datetime.now(ET)
+    live_ok = session_date == now.date().isoformat() and now.time() >= dt.time(9, 30)
+    cached = SIDE_CACHE.get(sym, {})
+    if live_ok:
+        for c in all_contracts: c["side"] = infer_side(c) if c["vol"] > 0 else "na"
+        SIDE_CACHE[sym] = {"session_date": session_date, "sides": {c["symbol"]: c["side"] for c in all_contracts if c["vol"] > 0}}
+        side_source = "live"
+    elif cached.get("session_date") == session_date:
+        for c in all_contracts: c["side"] = cached["sides"].get(c["symbol"], "na")
+        side_source = "cached"
+    else:
+        for c in all_contracts: c["side"] = "na"
+        side_source = "unavailable"
+    # Bullish/bearish totals across ALL session-traded contracts (not just the displayed tape rows).
+    fs = {"bull_orders": 0, "bull_premium": 0, "bear_orders": 0, "bear_premium": 0, "neutral_orders": 0, "neutral_premium": 0}
+    for c in all_contracts:
+        if c["vol"] <= 0: continue
+        sen = sentiment(c["cp"], c["side"])
+        k = {"bullish": "bull", "bearish": "bear"}.get(sen, "neutral")
+        fs[k + "_orders"] += 1; fs[k + "_premium"] += c["premium"]
     flow = []
     for c in all_contracts:
         if c["vol"] <= 0: continue
@@ -127,7 +156,7 @@ def process(sym, expected):
         if c["oi"] == 0 and c["vol"] >= 100: tags.append("New OI")
         if c["premium"] >= UNUSUAL_PREMIUM: tags.append("Large premium")
         if c["premium"] < MIN_FLOW_PREMIUM and not tags: continue
-        side = infer_side(c)
+        side = c["side"]
         otm = (c["strike"] > spot) if c["cp"] == "C" else (c["strike"] < spot)
         flow.append({"ticker": sym, "time": c["ts"], "expiry": c["expiry"], "dte": c["dte"], "strike": c["strike"], "cp": c["cp"],
                      "spot": round(spot, 2), "bid": c["bid"], "ask": c["ask"], "last": c["last"], "side": side,
@@ -149,7 +178,7 @@ def process(sym, expected):
         "call_vol": cvol, "put_vol": pvol, "pc_vol": round(pvol / cvol, 2) if cvol else None,
         "call_oi": coi, "put_oi": poi, "pc_oi": round(poi / coi, 2) if coi else None,
         "call_premium": cprem, "put_premium": pprem,
-        "bull_premium": bull, "bear_premium": bear,
+        "bull_premium": bull, "bear_premium": bear, "flow_sentiment": fs, "side_source": side_source,
         "unusual_count": unusual_total,
         "nearest_expiry": near["expiry"] if near else None, "max_pain": near["max_pain"] if near else None,
         "top_oi": top_oi, "gex_total": round(total_gex), 
@@ -173,9 +202,9 @@ def main():
         tickers.append(t); flow.extend(f)
         print(sym, t.get("status"), t.get("name", ""), "rows", len(f))
     def score(t):
-        b, r = t.get("bull_premium", 0), t.get("bear_premium", 0)
+        b, r = t["flow_sentiment"]["bull_premium"], t["flow_sentiment"]["bear_premium"]
         return (b - r) / (b + r) if (b + r) else 0
-    ranked = [t for t in tickers if t.get("status") == "ok" and (t.get("bull_premium", 0) + t.get("bear_premium", 0)) > 0]
+    ranked = [t for t in tickers if t.get("status") == "ok" and (t["flow_sentiment"]["bull_premium"] + t["flow_sentiment"]["bear_premium"]) > 0]
     for t in ranked: t["bias_score"] = round(score(t), 2)
     summary = {
         "bullish": [t["ticker"] for t in sorted(ranked, key=lambda t: -t["bias_score"]) if t["bias_score"] > 0.15][:5],
@@ -183,8 +212,18 @@ def main():
     }
     # Market status: snapshot taken outside 9:30-16:00 ET weekdays reflects the last session.
     open_ = now.weekday() < 5 and dt.time(9, 30) <= now.time() <= dt.time(16, 0)
-    data = {"generated_at": now.isoformat(), "market_open_at_snapshot": open_, "source": "Yahoo Finance option chains via yfinance (delayed ~15 min)",
+    ok = [t for t in tickers if t.get("status") == "ok"]
+    def board(k):
+        rows = [{"ticker": t["ticker"], "orders": t["flow_sentiment"][k + "_orders"], "premium": t["flow_sentiment"][k + "_premium"]} for t in ok]
+        return sorted([r for r in rows if r["premium"] > 0], key=lambda r: -r["premium"])
+    sentiment_board = {"bullish": board("bull"), "bearish": board("bear"),
+                       "bull_total": sum(t["flow_sentiment"]["bull_premium"] for t in ok), "bear_total": sum(t["flow_sentiment"]["bear_premium"] for t in ok),
+                       "bull_orders": sum(t["flow_sentiment"]["bull_orders"] for t in ok), "bear_orders": sum(t["flow_sentiment"]["bear_orders"] for t in ok),
+                       "neutral_total": sum(t["flow_sentiment"]["neutral_premium"] for t in ok),
+                       "side_sources": {t["ticker"]: t["side_source"] for t in ok}}
+    data = {"sentiment_board": sentiment_board, "generated_at": now.isoformat(), "market_open_at_snapshot": open_, "source": "Yahoo Finance option chains via yfinance (delayed ~15 min)",
             "tickers": tickers, "flow": sorted(flow, key=lambda r: r["premium"], reverse=True), "summary": summary}
+    with open(SIDES_PATH, "w") as fh: json.dump(SIDE_CACHE, fh, separators=(",", ":"))
     with open("data/flow.json", "w") as fh: json.dump(data, fh, separators=(",", ":"))
     print("wrote", len(flow), "rows")
 

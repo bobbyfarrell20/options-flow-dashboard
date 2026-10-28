@@ -9,6 +9,14 @@
   <div class="status"><span id="dot" class="dot"></span><span id="stamp">Loading…</span></div>
   <div class="hdr-stats" id="hdrStats"></div>
 </header>
+<section class="sentboard" id="sentboard">
+  <div class="sb-strip" id="sbStrip"></div>
+  <div class="sb-cards">
+    <div class="sb-card"><h2>Bullish flow</h2><table class="sb bull"><thead><tr><th>TICKER</th><th>ORDERS</th><th>PREMIUM</th></tr></thead><tbody id="sbBull"></tbody></table></div>
+    <div class="sb-card"><h2>Bearish flow</h2><table class="sb bear"><thead><tr><th>TICKER</th><th>ORDERS</th><th>PREMIUM</th></tr></thead><tbody id="sbBear"></tbody></table></div>
+  </div>
+  <div class="sb-note" id="sbNote">Orders = contracts traded in the latest session with an inferred side (calls near ask / puts near bid = bullish; puts near ask / calls near bid = bearish). Inferred from delayed public chain data; not confirmed sweeps or blocks. Mid-priced trades are excluded. Click a row to filter the flow table.</div>
+</section>
 <div class="notice">Data is derived from <b>delayed (~15 min) public option-chain snapshots</b> (Yahoo Finance via yfinance), refreshed about every 30 min in market hours — <b>not a live trade-by-trade tape</b>. Sweeps, blocks, and true buy/sell side can't be confirmed. "Side" and sentiment are <i>inferred</i> from last price vs. bid/ask (near ask → call bullish / put bearish; near bid → the reverse). Row time = contract's last trade time. Contracts whose last trade is not in the latest session are excluded from volume/premium (Yahoo can carry stale volume).</div>
 <main class="layout">
   <aside class="side">
