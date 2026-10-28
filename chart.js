@@ -76,7 +76,7 @@ function drawHeat(){
   let h=`<div class="hm" style="grid-template-columns:76px repeat(${N},minmax(5px,1fr)) 150px">`;
   h+=`<div class="hm-h"></div>`+labs.map(l=>`<div class="hm-h hm-t">${l}</div>`).join("")+`<div class="hm-h hm-c">Day cumulative</div>`;
   rows.forEach(r=>{const mx=CH.scale==="row"?Math.max(1,...r.cells.map(q=>q&&!q.cu?Math.abs(q.d):0)):shared;
-    h+=`<div class="hm-row" data-t="${r.t}"><div class="hm-tk">${r.t}${pos(r.t)}${typeof er==="function"?er(r.t).replace(/>📅 [^<]*</,">📅<"):""}</div>`;
+    h+=`<div class="hm-row" data-t="${r.t}"><div class="hm-tk">${r.t}${pos(r.t)}${typeof er==="function"?er(r.t).replace(/>📅 [^<]*</,">📅<")+sq(r.t,1):""}</div>`;
     r.cells.forEach((q,i)=>{if(q&&q.cu){h+=`<div class="hm-cell cu" data-i="${i}"></div>`;return}const c=heatColor(q?q.d:null,mx),f=q?Math.abs(q.d)/mx:0;
       h+=`<div class="hm-cell ${q?"":"nd"}" data-i="${i}" style="${c?`background:${c}`:""}">${q&&showVal&&f>=.04?`<span>${sgn(q.d)}</span>`:q&&showSign&&f>=.35&&Math.abs(q.d)>=5e3?`<span>${q.d>0?"+":"−"}</span>`:""}</div>`});
     const w=r.cum==null?0:Math.abs(r.cum)/cmax*50;

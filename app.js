@@ -24,7 +24,7 @@ async function load(){
 function erNote(){const l=WATCH.map(t=>[t,erInfo(t)]).filter(x=>x[1]);return ` 📅 = earnings within 7 days or reported in the last day (bright = within 2 days; dashed = date estimated/unconfirmed; hover for source). ${l.length?"Now: "+l.map(([t,x])=>t+" "+x.label).join(", ")+".":"None in the next 7 days."}`}
 function volNote(){const m=D.volume_meta;if(!m)return"";const ok=D.tickers.filter(t=>t.vol_vs_avg&&t.vol_vs_avg.baseline_days>=m.min_days).length;
   const fl=D.tickers.filter(t=>t.vol_vs_avg&&t.vol_vs_avg.flag).map(t=>t.ticker);
-  return ok?` 🔥 = options volume ≥1.5x (strong ≥3x) its ${m.lookback}-session average daily options volume from OCC (pace-adjusted intraday; hover a badge for details). Flagged: ${fl.join(", ")||"none"}.${erNote()}`:" 🔥 Unusual-volume badges: baseline building (need "+m.min_days+" sessions of OCC history).";}
+  return ok?` 🔥 = options volume ≥1.5x (strong ≥3x) its ${m.lookback}-session average daily options volume from OCC (pace-adjusted intraday; hover a badge for details). Flagged: ${fl.join(", ")||"none"}.${erNote()}${sqNote()}`:" 🔥 Unusual-volume badges: baseline building (need "+m.min_days+" sessions of OCC history).";}
 function board(){
   const b=D.sentiment_board;if(!b){$("#sentboard").style.display="none";return}
   const tot=b.bull_total+b.bear_total,bp=tot?b.bull_total/tot*100:50;
@@ -55,7 +55,28 @@ function board(){
 function tick(t){return D.tickers.find(x=>x.ticker===t)}
 const POSITIONS=new Set(["LYFT"]); // tickers Bobby holds a position in (marker only, no details)
 function pos(t){return POSITIONS.has(t)?'<span class="postag" title="You hold a position in this ticker">POS</span>':""}
-function vb(t,full){return pos(t)+er(t,!full)+vb0(t)}
+function vb(t,full){return pos(t)+er(t,!full)+sq(t,!full)+vb0(t)}
+const SQ_INFO="Squeeze meter = a risk gauge, not a confirmation. It cannot confirm a squeeze in real time: short interest is reported twice a month (FINRA settlement dates, published ~1-2 weeks later) and Yahoo's short % of float lags the same way. Score 0-100 = geometric mean of SETUP (short % of float, days to cover, short-interest change) and TRIGGER (price momentum, stock & options volume, inferred flow, short-dated OTM calls, GEX sign), capped below 40 unless setup ≥40 and trigger ≥25, and below 60 unless setup ≥60 and trigger ≥40. Shown only at 40+: 40-59 Squeeze watch, 60+ Squeeze conditions. No borrow-fee data (no free source).";
+function sqNote(){const T=D&&D.squeeze&&D.squeeze.tickers;if(!T)return"";const l=Object.entries(T).filter(([k,v])=>v.score>=40).sort((a,b)=>b[1].score-a[1].score).map(([k,v])=>`${k} ${v.score}`);
+  return ` Squeeze meter badge (gauge, 40+ only; risk gauge, not confirmation; short data biweekly/lagged; click for factors): ${l.join(", ")||"none at 40+"}.`}
+function sqInfo(t){const S=D&&D.squeeze&&D.squeeze.tickers&&D.squeeze.tickers[t];return S||null}
+function gauge(v){const a=Math.PI*(1-Math.max(0,Math.min(100,v))/100),x=(8+6*Math.cos(a)).toFixed(1),y=(8-6*Math.sin(a)).toFixed(1);
+  return `<svg class="sqg" viewBox="0 0 16 9" width="14" height="8"><path d="M2 8A6 6 0 0 1 14 8" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="2"/><path d="M2 8A6 6 0 0 ${v>50?1:0} 1 ${x} ${y}" fill="none" stroke="currentColor" stroke-width="2"/></svg>`}
+function sq(t,compact){const S=sqInfo(t);if(!S||S.score==null||S.score<40)return"";const lv=S.score>=60?"cond":"watch";
+  const tip=`${S.score>=60?"Squeeze conditions":"Squeeze watch"} ${S.score}/100 (setup ${S.setup}, trigger ${S.trigger}). Short interest as of ${S.si_date||"n/a"}. Risk gauge only, not a confirmed squeeze; short data is biweekly and lagged. Click for factors.`;
+  return ` <span class="sqtag ${lv}" data-sq="${t}" title="${tip}">${gauge(S.score)}${compact?"":(S.score>=60?" Squeeze ":" Sq watch ")}${S.score}</span>`}
+const SQ_LAB={si_float:["Short % of float","%"],dtc:["Days to cover",""],si_change:["Short interest change","%"],day:["Price today","%"],d5:["5-day change","%"],vs_high:["vs prior 20-session high","%"],rel_vol:["Stock volume vs 20d avg","x"],opt_pace:["Options volume vs 20d avg","x"],net_prem:["Net inferred premium (bull−bear)/total",""],cs_skew:["Call share vs 20d avg","pp"],otm_short:["Short-dated OTM call share","%"],gex:["Est. net GEX sign",""]};
+function sqPanel(t){const S=sqInfo(t);if(!S)return"";const W=(D.squeeze.weights||{});
+  const row=(k,grp)=>{const f=S.factors[k];if(!f)return"";const [lab,u]=SQ_LAB[k];let v=f.value;
+    if(v==null)v='<span class="muted">n/a</span>';else if(k==="gex")v=(v<0?"negative":"positive")+` ($${money(Math.abs(v))})`;else v=(typeof v==="number"&&v>0&&["si_change","day","d5","cs_skew","net_prem"].includes(k)?"+":"")+v+u;
+    return `<tr><td>${lab}</td><td>${v}</td><td>${f.sub==null?"–":f.sub}</td><td>${Math.round((W[grp]||{})[k]*100)}%</td><td class="muted" title="${f.date||""} · ${f.source}">${f.date?(+f.date.slice(5,7))+"/"+(+f.date.slice(8)):"–"}</td></tr>`};
+  const lv=S.score==null?"Not scored (short % of float unavailable)":S.score>=60?"Squeeze conditions":S.score>=40?"Squeeze watch":"Below 40 (badge hidden)";
+  return `<div class="sqpanel"><div class="sqhead"><b>Squeeze meter</b> <span class="info" title="${SQ_INFO}">ⓘ</span>
+   <span class="sqtag ${S.score>=60?"cond":S.score>=40?"watch":"low"}">${gauge(S.score||0)} ${S.score??"–"}</span> <span class="muted">${lv} · setup ${S.setup??"–"} · trigger ${S.trigger??"–"}</span></div>
+   <table class="sqt"><tr><th>Factor</th><th>Value</th><th>Pts</th><th>Wt</th><th>As of</th></tr>
+   <tr class="grp"><td colspan="5">Setup (short interest)</td></tr>${["si_float","dtc","si_change"].map(k=>row(k,"setup")).join("")}
+   <tr class="grp"><td colspan="5">Trigger (momentum + flow)</td></tr>${["day","d5","vs_high","rel_vol","opt_pace","net_prem","cs_skew","otm_short","gex"].map(k=>row(k,"trigger")).join("")}</table>
+   <div class="muted sqnote">Risk gauge, not a confirmed squeeze. Short interest is biweekly and lagged (as of ${S.si_date||"n/a"}); hover a date for its source. Missing factors are skipped, never estimated. Borrow fee not included (no free source).</div></div>`}
 // ---------- earnings (data/earnings.json via flow.json "earnings"; refreshed daily; unknown -> no badge) ----------
 const etToday=()=>new Date().toLocaleDateString("en-CA",{timeZone:"America/New_York"});
 const dayDiff=(a,b)=>Math.round((Date.parse(b+"T12:00:00Z")-Date.parse(a+"T12:00:00Z"))/864e5);
@@ -93,6 +114,7 @@ function overview(){
     return `<tr data-t="${t}"><td><b>${t}</b>${vb(t,1)}${x.name_ok?"":' <span class="warn">⚠</span>'}</td><td>${x.spot}</td><td class="${x.pc_vol>1?"P":"C"}">${x.pc_vol??"–"}</td><td>${money(x.call_premium)}</td><td>${money(x.put_premium)}</td><td>${x.max_pain??"–"}</td></tr>`}).join("");
   $("#overview").querySelectorAll("tr[data-t]").forEach(e=>e.onclick=()=>pick(e.dataset.t));
 }
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest(".sqtag[data-sq]");if(b){e.stopPropagation();e.preventDefault();pick(b.dataset.sq);const d=document.querySelector(".sqpanel");d&&d.scrollIntoView({block:"nearest",behavior:"smooth"})}},true);
 function pick(t){st.tk=new Set([t]);chips();board();render();detail(t)}
 function detail(t){
   if(!t){$("#tkTitle").textContent="Ticker detail";$("#tkDetail").innerHTML='<span class="muted">Pick a ticker chip to see details.</span>';return}
@@ -108,7 +130,7 @@ function detail(t){
    <span>Max pain (${x.nearest_expiry})</span><span>$${x.max_pain}</span>
    <span>Approx. net GEX ($ per 1% move)</span><span class="${x.gex_total>=0?"C":"P"}">${x.gex_total>=0?"+":""}$${money(x.gex_total)}</span>
    <span>Unusual contracts</span><span>${x.unusual_count}</span>
-   <span>Expiries scanned</span><span>${x.expiries_scanned} (${n(x.contracts)} contracts)</span></div>
+   <span>Expiries scanned</span><span>${x.expiries_scanned} (${n(x.contracts)} contracts)</span></div>${sqPanel(t)}
    <div style="margin-top:8px" class="muted">Top strikes by open interest</div>
    <div class="kv">${x.top_oi.map(o=>`<span><span class="${o.cp}">${o.cp}</span> $${o.strike}</span><span>${n(o.oi)}</span>`).join("")}</div>
    <div style="margin-top:8px" class="muted">Largest GEX strikes (approx.)</div>

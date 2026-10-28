@@ -10,6 +10,7 @@ import timeseries as ts
 import daily
 import incremental as inc
 import earnings
+import squeeze
 
 ET = ZoneInfo("America/New_York")
 WATCHLIST = [
@@ -78,7 +79,8 @@ def process(sym, expected):
         h = tk.history(period="5d")
         if len(h): spot = num(h["Close"].iloc[-1])
     out = {"ticker": sym, "expected": expected, "name": name, "name_ok": name_ok, "spot": round(spot, 2),
-           "change_pct": round(num(info.get("regularMarketChangePercent")), 2), "status": "ok"}
+           "change_pct": round(num(info.get("regularMarketChangePercent")), 2), "status": "ok",
+           "stock_volume": info.get("regularMarketVolume")}
     exps = list(tk.options or [])
     if not exps:
         out.update(status="no_options", message="No listed options data from source"); return out, []
@@ -198,7 +200,9 @@ def process(sym, expected):
     gex_by_strike = {}
     for c in all_contracts: gex_by_strike[c["strike"]] = gex_by_strike.get(c["strike"], 0) + c["gex"]
     total_gex = sum(gex_by_strike.values())
+    sc_vol = sum(c["vol"] for c in all_contracts if c["cp"] == "C" and c["dte"] <= 7 and c["strike"] > spot)
     out.update({
+        "otm_short_call_share": round(sc_vol / cvol, 4) if cvol else None,
         "expiries_scanned": len({c["expiry"] for c in all_contracts}), "contracts": len(all_contracts),
         "call_vol": cvol, "put_vol": pvol, "pc_vol": round(pvol / cvol, 2) if cvol else None,
         "call_oi": coi, "put_oi": poi, "pc_oi": round(poi / coi, 2) if coi else None,
@@ -301,6 +305,20 @@ def main():
         ec = earnings.update([s for s, _ in WATCHLIST], now)
         data["earnings"] = {k: ec.get(k) for k in ("fetched", "fetched_at", "sources", "tickers")}
     except Exception as ex: print("earnings failed:", ex)
+    try:   # squeeze meter (risk gauge, not confirmation); short data cached once per ET day
+        scache = squeeze.update([s for s, _ in WATCHLIST], now)
+        frac = 1.0
+        if now.weekday() < 5:
+            eff = now - dt.timedelta(minutes=15); frac = min(1.0, max(0.0, ((eff.hour * 60 + eff.minute) - 570) / 390))
+        sq = {}
+        for t in tickers:
+            if t.get("status") != "ok": continue
+            if t.get("session_date") != now.date().isoformat(): frac_t = 1.0
+            else: frac_t = frac
+            sq[t["ticker"]] = squeeze.compute(t, scache["tickers"].get(t["ticker"], {}), data.get("daily"), frac_t, now.date())
+        data["squeeze"] = {"fetched_at": scache.get("fetched_at"), "tickers": sq,
+                           "weights": {"setup": squeeze.SETUP_W, "trigger": squeeze.TRIG_W}}
+    except Exception as ex: print("squeeze failed:", ex)
     with open("data/flow.json", "w") as fh: json.dump(data, fh, separators=(",", ":"))
     print("wrote", len(flow), "rows")
 
