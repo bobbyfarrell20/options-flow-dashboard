@@ -46,5 +46,5 @@ def payload(h, vol_hist, today, sessions=5):
             "inferred": {d: h["days"][d] for d in dates if d in h["days"]},
             "occ_cp": {d: cp[d] for d in dates if d in cp},
             "cs_base": {d: cs_base(cp, d) for d in dates},
-            "notes": {"inferred": "Inferred net premium from live delayed snapshots (side inferred from last vs bid/ask); available from 2026-10-28.",
+            "notes": {"inferred": "Inferred net premium from live delayed snapshots (incremental, locked-in classification of each snapshot's new volume vs that snapshot's bid/ask); available from 2026-10-28.",
                       "occ_cp": "OCC cleared contract volume, calls vs puts, completed sessions only. No side, no premium."}}

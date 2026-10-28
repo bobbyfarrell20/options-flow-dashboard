@@ -8,6 +8,7 @@ import os
 import volume_baseline as vb
 import timeseries as ts
 import daily
+import incremental as inc
 
 ET = ZoneInfo("America/New_York")
 WATCHLIST = [
@@ -139,29 +140,37 @@ def process(sym, expected):
     cvol = sum(c["vol"] for c in all_contracts if c["cp"] == "C"); pvol = sum(c["vol"] for c in all_contracts if c["cp"] == "P")
     coi = sum(c["oi"] for c in all_contracts if c["cp"] == "C"); poi = sum(c["oi"] for c in all_contracts if c["cp"] == "P")
     cprem = sum(c["premium"] for c in all_contracts if c["cp"] == "C"); pprem = sum(c["premium"] for c in all_contracts if c["cp"] == "P")
-    # Side inference needs bid/ask quotes from the same session as the trades. Outside that window
-    # (next-day pre-market, weekends) Yahoo's bid/ask are reset/refreshed, so reuse the sides saved
-    # by the last in-session run instead of re-inferring from mismatched quotes.
+    # Incremental, locked-in side classification (scripts/incremental.py): per contract only the volume
+    # added since the previous snapshot is classified, using THIS snapshot's in-session bid/ask/last, and
+    # added to running per-session bullish/bearish/neutral totals persisted in data/sides.json.
+    # Previously classified volume is never re-classified. Quotes are only trusted in-session (session date
+    # is today and >= 9:30 ET); otherwise (pre-market, weekends) the saved totals are reused unchanged.
     now = dt.datetime.now(ET)
     live_ok = session_date == now.date().isoformat() and now.time() >= dt.time(9, 30)
     cached = SIDE_CACHE.get(sym, {})
+    state, interval, adjust = None, None, None
     if live_ok:
-        for c in all_contracts: c["side"] = infer_side(c) if c["vol"] > 0 else "na"
-        SIDE_CACHE[sym] = {"session_date": session_date, "sides": {c["symbol"]: c["side"] for c in all_contracts if c["vol"] > 0}}
+        state, interval, adjust = inc.step(cached, session_date, all_contracts, now.isoformat(timespec="seconds"))
+        SIDE_CACHE[sym] = state
         side_source = "live"
-    elif cached.get("session_date") == session_date:
-        for c in all_contracts: c["side"] = cached["sides"].get(c["symbol"], "na")
-        side_source = "cached"
+    elif cached.get("session_date") == session_date and cached.get("method") == "incremental":
+        state, side_source = cached, "cached"
     else:
-        for c in all_contracts: c["side"] = "na"
         side_source = "unavailable"
-    # Bullish/bearish totals across ALL session-traded contracts (not just the displayed tape rows).
-    fs = {"bull_orders": 0, "bull_premium": 0, "bear_orders": 0, "bear_premium": 0, "neutral_orders": 0, "neutral_premium": 0}
+    SIDE_OF = {("bullish", "C"): "ask", ("bullish", "P"): "bid", ("bearish", "C"): "bid", ("bearish", "P"): "ask"}
     for c in all_contracts:
-        if c["vol"] <= 0: continue
-        sen = sentiment(c["cp"], c["side"])
-        k = {"bullish": "bull", "bearish": "bear"}.get(sen, "neutral")
-        fs[k + "_orders"] += 1; fs[k + "_premium"] += c["premium"]
+        sen = inc.contract_sentiment(state, c["symbol"]) if (state and c["vol"] > 0) else None
+        c["sentiment"] = sen or "neutral"
+        c["side"] = "na" if sen is None else SIDE_OF.get((sen, c["cp"]), "mid")
+    # Running totals across ALL session-traded contracts seen this session (not just the displayed tape rows).
+    tot = inc.totals(state) if state else {}
+    fs = {k: tot.get(k, 0) for k in ("bull_orders", "bull_premium", "bear_orders", "bear_premium", "neutral_orders", "neutral_premium", "bull_vol", "bear_vol", "neutral_vol")}
+    fs["method"] = "incremental"
+    if state:
+        fs.update(snapshots=state.get("n"), corrections=state.get("corr", 0), classified_through=state.get("ts"))
+    if interval is not None:
+        fs["interval"] = {"bull_premium": interval[0], "bear_premium": interval[1], "neutral_premium": interval[2]}
+        fs["correction_adjust"] = {"bull_premium": adjust[0], "bear_premium": adjust[1], "neutral_premium": adjust[2]}
     flow = []
     for c in all_contracts:
         if c["vol"] <= 0: continue
@@ -175,7 +184,7 @@ def process(sym, expected):
         otm = (c["strike"] > spot) if c["cp"] == "C" else (c["strike"] < spot)
         flow.append({"ticker": sym, "time": c["ts"], "expiry": c["expiry"], "dte": c["dte"], "strike": c["strike"], "cp": c["cp"],
                      "spot": round(spot, 2), "bid": c["bid"], "ask": c["ask"], "last": c["last"], "side": side,
-                     "sentiment": sentiment(c["cp"], side), "otm": otm, "vol": c["vol"], "oi": c["oi"], "vol_oi": c["vol_oi"],
+                     "sentiment": c["sentiment"], "otm": otm, "vol": c["vol"], "oi": c["oi"], "vol_oi": c["vol_oi"],
                      "iv": round(c["iv"] * 100, 1), "premium": c["premium"], "tags": tags, "unusual": bool(tags), "symbol": c["symbol"]})
     flow.sort(key=lambda r: r["premium"], reverse=True)
     unusual_total = sum(1 for r in flow if r["unusual"])

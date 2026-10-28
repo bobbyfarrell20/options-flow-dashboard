@@ -1,0 +1,47 @@
+name: Market-hours ticker (schedule fallback)
+# GitHub's cron scheduler has not fired for this repo, so this job keeps the 10-minute cadence itself:
+# one long run loops during the session and dispatches refresh.yml (workflow_dispatch is the one event a
+# GITHUB_TOKEN may trigger). Before the 6h job limit it re-dispatches itself to continue (self-chaining).
+# It is (re)started by its own cron (if GitHub fires it), by any refresh run that finds no ticker active,
+# or manually. Only one runs at a time (concurrency group). Public repo: Actions minutes are free.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "7 13 * * 1-5"    # 9:07 AM EDT / 8:07 AM EST kick-off (if GitHub's scheduler fires)
+permissions:
+  actions: write
+  contents: read
+concurrency:
+  group: ticker
+  cancel-in-progress: false
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Dispatch refresh every 10 min, 9:30-16:30 ET
+        run: |
+          start=$(date +%s); budget=$((325*60))   # leave headroom under the 6h job cap
+          in_window() {  # weekday and 09:30 <= ET < 16:30 (last dispatch ~16:20 captures the delayed close)
+            local dow=$(TZ=America/New_York date +%u) hm=$((10#$(TZ=America/New_York date +%H%M)))
+            [ "$dow" -le 5 ] && [ "$hm" -ge 930 ] && [ "$hm" -lt 1630 ]
+          }
+          before_open() { local hm=$((10#$(TZ=America/New_York date +%H%M))); [ "$(TZ=America/New_York date +%u)" -le 5 ] && [ "$hm" -lt 930 ]; }
+          if ! in_window && ! before_open; then echo "Outside market window; exiting."; exit 0; fi
+          while [ $(( $(date +%s) - start )) -lt $budget ]; do
+            if in_window; then
+              echo "$(TZ=America/New_York date '+%H:%M:%S ET') dispatch refresh.yml"
+              gh workflow run refresh.yml --ref main || echo "dispatch failed (will retry next slot)"
+            elif ! before_open; then
+              echo "Session window over; done."; exit 0
+            fi
+            # sleep to the next 10-minute boundary (+20s)
+            now=$(date +%s); sleep $(( 600 - now % 600 + 20 ))
+          done
+          if in_window; then
+            echo "Job budget reached during the session; chaining a new ticker run."
+            gh workflow run ticker.yml --ref main
+          fi

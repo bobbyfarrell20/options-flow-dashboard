@@ -184,3 +184,5 @@ table.netsb thead th:nth-child(1){width:30%}table.netsb thead th:nth-child(2){wi
 .hinfo{display:inline-block;position:relative;cursor:help;color:#6c8cff;font-size:12px}
 .hinfo:hover:after,.hinfo:focus:after{content:attr(data-tip);position:absolute;left:50%;top:18px;transform:translateX(-60%);width:280px;white-space:normal;text-align:left;background:#0d111a;border:1px solid #3a4560;border-radius:6px;padding:7px 9px;color:#dfe5f2;font-size:11px;font-weight:400;line-height:1.45;z-index:60;box-shadow:0 4px 14px rgba(0,0,0,.5)}
 @media(max-width:600px){.sc{grid-template-columns:60px repeat(6,minmax(38px,1fr)) 110px!important;font-size:10px}.sc-cell{font-size:10px}}
+
+.hm-cell.cu,.hm-leg i.cu{background:repeating-linear-gradient(45deg,#3a4256 0 3px,#232a3a 3px 6px)}
