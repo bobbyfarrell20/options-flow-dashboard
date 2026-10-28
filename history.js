@@ -1,5 +1,5 @@
 // Farrell Flow — "Last 5 days": 5 prior completed sessions + today (live) once in-session data exists.
-const HS={mode:"cp",focus:null,charts:[]};
+const HS={mode:null,focus:null,charts:[]};
 function hatch(color){const c=document.createElement("canvas");c.width=c.height=8;const g=c.getContext("2d");
   g.fillStyle=color.replace(/[\d.]+\)$/,".18)");g.fillRect(0,0,8,8);g.strokeStyle=color;g.lineWidth=2;g.beginPath();g.moveTo(0,8);g.lineTo(8,0);g.moveTo(-2,2);g.lineTo(2,-2);g.moveTo(6,10);g.lineTo(10,6);g.stroke();
   return g.createPattern(c,"repeat")}
@@ -29,15 +29,21 @@ function hChart(el,t,big){const S=hSeries(t);if(!S)return;let cum=0;const cl=S.m
   HS.charts.push(ch);return S}
 // ---------- scoreboard heatmap (comparable across tickers) ----------
 function hNorm(t){const P=D.daily;return P.dates.map(d=>{const live=d===P.today;
-  if(HS.mode==="net"){const r=(P.inferred[d]||{}).t?.[t];const tot=r?(r.bull+r.bear):0;
-    return{d,live,v:r&&tot?r.net/tot*100:null,tip:r&&tot?`Net ${sgn(r.net)} of $${money(tot)} directional premium (bull $${money(r.bull)} / bear $${money(r.bear)})`:"No inferred-side data for this day"}}
+  // inferred net ÷ directional premium; today uses the live snapshot = exactly the Net flow card's numbers
+  let r=(P.inferred[d]||{}).t?.[t];if(live){const x=tick(t),f=x&&x.flow_sentiment;if(x&&f&&x.side_source!=="unavailable")r={bull:f.bull_premium||0,bear:f.bear_premium||0,net:(f.bull_premium||0)-(f.bear_premium||0)}}
+  const tot=r?(r.bull+r.bear):0,np=r&&tot?r.net/tot*100:null;
   let c=null,p=null,src;if(live){const x=tick(t);if(x&&x.call_vol!=null){c=x.call_vol;p=x.put_vol;src="Yahoo session volume so far (live, partial)"}}
   else{const o=(P.occ_cp[d]||{})[t];if(o){[c,p]=o;src="OCC cleared volume"}}
-  const b=((P.cs_base||{})[d]||{})[t];if(c==null||!(c+p)||!b)return{d,live,v:null,tip:c==null?"No volume data":"Not enough history for a 20-day baseline"};
-  const sh=c/(c+p);return{d,live,v:(sh-b.share)*100,tip:`Call share ${(sh*100).toFixed(1)}% vs 20-day avg ${(b.share*100).toFixed(1)}% (${b.days} sessions)\nCalls ${n(c)} · Puts ${n(p)} · ${src}`}})}
+  const b=((P.cs_base||{})[d]||{})[t],pp=c!=null&&c+p>0&&b?(c/(c+p)-b.share)*100:null;
+  const k=dirConf(pp,np,r?r.net:0),npTip=np!=null?`Buy/sell flow: net ${sgn(r.net)} of $${money(tot)} directional premium (bull $${money(r.bull)} / bear $${money(r.bear)}) = ${(np>0?"+":"")+np.toFixed(1)}%`:"No inferred buy/sell side data for this day (starts Oct 28)";
+  const ppTip=pp!=null?`Volume mix: call share ${(c/(c+p)*100).toFixed(1)}% vs 20-day avg ${(b.share*100).toFixed(1)}% (${b.days} sessions) = ${(pp>0?"+":"")+pp.toFixed(1)} pp\nCalls ${n(c)} · Puts ${n(p)} · ${src}`:(c==null?"No volume data":"Not enough history for a 20-day baseline");
+  const tip=(HS.mode==="net"?npTip+"\n"+ppTip:ppTip+"\n"+npTip)+(k.conflict?"\n⚠ "+k.msg:"");
+  return{d,live,v:HS.mode==="net"?np:pp,tip,k}})}
 function hCell(v,cap){if(v==null)return"";const a=(.15+.8*Math.sqrt(Math.min(1,Math.abs(v)/cap))).toFixed(2);return`background:${v>=0?`rgba(34,197,94,${a})`:`rgba(239,68,68,${a})`}`}
 function hDraw(){HS.charts.forEach(c=>c.destroy());HS.charts=[];const P=D.daily,body=$("#hBody");
   if(!P||!P.dates.length){body.innerHTML='<div class="fc-msg">No daily history yet.</div>';$("#hChips").innerHTML="";return}
+  // Default: buy/sell (inferred net) view once most columns have side data; until then the volume-mix view, with ⚠ where the two disagree.
+  if(!HS.mode)HS.mode=P.dates.filter(d=>P.inferred[d]).length>=Math.ceil(P.dates.length/2)?"net":"cp";
   document.querySelectorAll("#hMode button").forEach(b=>b.classList.toggle("on",b.dataset.v===HS.mode));
   const net=HS.mode==="net",cap=net?60:15,unit=net?"%":" pp",fmt=v=>v==null?"–":(v>0?"+":"")+v.toFixed(1);
   if(HS.focus){$("#hChips").innerHTML=`<button class="fc-back" id="hBack">← Back to scoreboard</button><span class="fc-focus">${HS.focus}${pos(HS.focus)}${er(HS.focus)} · ${net?"inferred net premium":"calls − puts (contracts)"} per day</span>`;
@@ -50,11 +56,13 @@ function hDraw(){HS.charts.forEach(c=>c.destroy());HS.charts=[];const P=D.daily,
     const smax=Math.max(1e-9,...rows.map(r=>Math.abs(r.score||0)));
     const info=net?"Inferred net premium ÷ total directional premium (bullish + bearish) for each day: +100% = all bullish, −100% = all bearish. Comparable across tickers of any size. Side is inferred from delayed quotes; only exists from Oct 28 onward."
       :"Call share of options volume (calls ÷ (calls + puts)) minus that ticker's own 20-session average call share, in percentage points. +5 pp = 5 points more call-heavy than usual for that name. Completed days: OCC cleared volume; Today: Yahoo session volume so far. Volume-based: no side (a call can be bought or sold).";
-    $("#hChips").innerHTML=`<span class="fc-hint">${net?"Net ÷ total premium (inferred)":"Call share vs own 20-day average (volume-based, no side)"} <span class="hinfo" tabindex="0" data-tip="${info}">ⓘ</span> · sorted by score, most bullish on top · click a row for its 5-day chart</span>`;
+    const ncf=rows.filter(r=>r.c.some(x=>x.k.conflict)).map(r=>r.t);
+    const hcap=net?`<span class="h-cap"><b>What this shows:</b> who was buying vs selling (inferred net premium) — same signal as the Net flow card. ⚠ = the call/put volume mix points the other way.</span>`:`<span class="h-cap"><b>What this shows:</b> call vs put <i>volume mix</i> vs normal — not who bought or sold. The Net flow card shows buy/sell. ⚠ = the two disagree${ncf.length?" (now: "+ncf.join(", ")+")":""}; hover a cell for both numbers.</span>`;
+    $("#hChips").innerHTML=hcap+`<span class="fc-hint">${net?"Net ÷ total premium (inferred)":"Call share vs own 20-day average (volume-based, no side)"} <span class="hinfo" tabindex="0" data-tip="${info}">ⓘ</span> · sorted by score, most bullish on top · click a row for its 5-day chart</span>`;
     const hd=P.dates.map(d=>d===P.today?`<div class="sc-h live">Today<br><small>live</small></div>`:`<div class="sc-h">${new Date(d+"T12:00:00").toLocaleDateString("en-US",{weekday:"short"})}<br><small>${new Date(d+"T12:00:00").toLocaleDateString("en-US",{month:"numeric",day:"numeric"})}</small></div>`).join("");
     let h=`<div class="sc" style="grid-template-columns:minmax(84px,max-content) repeat(${P.dates.length},minmax(46px,1fr)) minmax(170px,1.6fr)"><div class="sc-h"></div>${hd}<div class="sc-h">Score <small>(avg of ${P.dates.length} cols)</small> <span class="hinfo" tabindex="0" data-tip="Average of the row's values across the columns shown (including today's live value). Arrow: ↗ the last 2 days are notably more bullish than the earlier days (≥${net?10:2}${unit.trim()}), ↘ notably more bearish.">ⓘ</span></div>`;
-    rows.forEach(r=>{h+=`<div class="sc-row" data-t="${r.t}"><div class="sc-tk">${r.t}${pos(r.t)}${er(r.t).replace(/>📅 [^<]*</,">📅<")}${sq(r.t,1)}</div>`+
-      r.c.map((x,i)=>{const ed=erDate(r.t).find(z=>z.date===P.dates[i]);return`<div class="sc-cell ${x.live?"live":""} ${x.v==null?"nd":""} ${ed?"er":""}" style="${hCell(x.v,cap)}" title="${(x.live?"Today (live) · ":"")+x.tip}${ed?` · Earnings date (${ed.e.timing||"timing n/a"}${ed.e.estimated===false?"":", unconfirmed"})`:""}">${fmt(x.v)}</div>`}).join("")+
+    rows.forEach(r=>{h+=`<div class="sc-row" data-t="${r.t}"><div class="sc-tk">${r.t}${pos(r.t)}${er(r.t).replace(/>📅 [^<]*</,">📅<")}${sq(r.t,1)}${(r.c.find(x=>x.live)||{}).k?.conflict?confMark(r.c.find(x=>x.live).k):""}</div>`+
+      r.c.map((x,i)=>{const ed=erDate(r.t).find(z=>z.date===P.dates[i]);return`<div class="sc-cell ${x.live?"live":""} ${x.v==null?"nd":""} ${ed?"er":""}" style="${hCell(x.v,cap)}" title="${(x.live?"Today (live) · ":"")+x.tip}${ed?` · Earnings date (${ed.e.timing||"timing n/a"}${ed.e.estimated===false?"":", unconfirmed"})`:""}">${fmt(x.v)}${confMark(x.k)}</div>`}).join("")+
       `<div class="sc-score"><span class="hm-bar"><i class="${(r.score||0)>=0?"up":"dn"}" style="${(r.score||0)>=0?"left:50%":"right:50%"};width:${r.score==null?0:Math.abs(r.score)/smax*50}%"></i></span><b class="${(r.score||0)>=0?"C":"P"}">${fmt(r.score)}${r.score==null?"":unit}</b><span class="tr ${r.trend>0?"C":r.trend<0?"P":""}" title="${r.trend>0?"Last 2 days more bullish than before":r.trend<0?"Last 2 days more bearish than before":""}">${r.trend>0?"↗":r.trend<0?"↘":""}</span></div></div>`});
     body.innerHTML=h+"</div>";
     body.querySelectorAll(".sc-row").forEach(e=>e.onclick=()=>{HS.focus=e.dataset.t;hDraw()})}
