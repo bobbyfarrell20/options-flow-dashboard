@@ -73,7 +73,7 @@ function drawHeat(){
   const shared=Math.max(1,...rows.flatMap(r=>r.cells.map(q=>q&&!q.cu?Math.abs(q.d):0)));
   const cmax=Math.max(1,...rows.map(r=>Math.abs(r.cum||0)));const N=cols.length,showSign=N<=48,showVal=N<=10;
   let lastHalf=null;const labs=cols.map((x,i)=>{const hh=Math.floor((x-CH.bounds.open)/(30*60e3));const l=(N<=12||hh!==lastHalf)?etHM(x).replace(" AM","").replace(" PM",""):"";lastHalf=hh;return l});
-  let h=`<div class="hm" style="grid-template-columns:76px repeat(${N},minmax(5px,1fr)) 150px">`;
+  let h=`<div class="hm" style="grid-template-columns:minmax(76px,max-content) repeat(${N},minmax(5px,1fr)) 150px">`;
   h+=`<div class="hm-h"></div>`+labs.map(l=>`<div class="hm-h hm-t">${l}</div>`).join("")+`<div class="hm-h hm-c">Day cumulative</div>`;
   rows.forEach(r=>{const mx=CH.scale==="row"?Math.max(1,...r.cells.map(q=>q&&!q.cu?Math.abs(q.d):0)):shared;
     h+=`<div class="hm-row" data-t="${r.t}"><div class="hm-tk">${r.t}${pos(r.t)}${typeof er==="function"?er(r.t).replace(/>📅 [^<]*</,">📅<")+sq(r.t,1):""}</div>`;

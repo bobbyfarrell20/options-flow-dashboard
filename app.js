@@ -17,7 +17,7 @@ async function load(){
   const ok=D.tickers.filter(t=>t.status==="ok");
   const cp=ok.reduce((a,t)=>a+t.call_premium,0),pp=ok.reduce((a,t)=>a+t.put_premium,0);
   $("#hdrStats").innerHTML=`<div>Call prem <b class="C">$${money(cp)}</b></div><div>Put prem <b class="P">$${money(pp)}</b></div><div>P/C prem <b>${(pp/cp).toFixed(2)}</b></div><div>Tape rows <b>${D.flow.length}</b></div>`;
-  chips();board();leaders();overview();render();if(st.tk.size===1)detail([...st.tk][0]);
+  chips();board();leaders();overview();render();radar();if(st.tk.size===1)detail([...st.tk][0]);
   try{if(typeof chartLoad==="function")await chartLoad();if(typeof hDraw==="function")hDraw()}catch(e){console.error(e)}
   return true;
 }
@@ -66,17 +66,47 @@ function sq(t,compact){const S=sqInfo(t);if(!S||S.score==null||S.score<40)return
   const tip=`${S.score>=60?"Squeeze conditions":"Squeeze watch"} ${S.score}/100 (setup ${S.setup}, trigger ${S.trigger}). Short interest as of ${S.si_date||"n/a"}. Risk gauge only, not a confirmed squeeze; short data is biweekly and lagged. Click for factors.`;
   return ` <span class="sqtag ${lv}" data-sq="${t}" title="${tip}">${gauge(S.score)}${compact?"":(S.score>=60?" Squeeze ":" Sq watch ")}${S.score}</span>`}
 const SQ_LAB={si_float:["Short % of float","%"],dtc:["Days to cover",""],si_change:["Short interest change","%"],day:["Price today","%"],d5:["5-day change","%"],vs_high:["vs prior 20-session high","%"],rel_vol:["Stock volume vs 20d avg","x"],opt_pace:["Options volume vs 20d avg","x"],net_prem:["Net inferred premium (bull−bear)/total",""],cs_skew:["Call share vs 20d avg","pp"],otm_short:["Short-dated OTM call share","%"],gex:["Est. net GEX sign",""]};
+const sqZone=v=>v==null?"na":v>=60?"cond":v>=40?"watch":"low";
+function bigGauge(v){const R=80,cx=100,cy=92,pt=a=>[cx+R*Math.cos(Math.PI*(1-a/100)),cy-R*Math.sin(Math.PI*(1-a/100))];
+  const arc=(a,b,c)=>{const [x1,y1]=pt(a),[x2,y2]=pt(b);return `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)}A${R} ${R} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}" stroke="${c}" stroke-width="14" fill="none"/>`};
+  const tick=a=>{const [x1,y1]=[cx+(R-11)*Math.cos(Math.PI*(1-a/100)),cy-(R-11)*Math.sin(Math.PI*(1-a/100))],[x2,y2]=[cx+(R+11)*Math.cos(Math.PI*(1-a/100)),cy-(R+11)*Math.sin(Math.PI*(1-a/100))];return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#0b0f17" stroke-width="2"/>`};
+  const lab=a=>{const [x,y]=[cx+(R+18)*Math.cos(Math.PI*(1-a/100)),cy-(R+18)*Math.sin(Math.PI*(1-a/100))];return `<text x="${x.toFixed(1)}" y="${(y+3).toFixed(1)}" class="gl">${a}</text>`};
+  let nd="";if(v!=null){const a=Math.PI*(1-Math.max(0,Math.min(100,v))/100),x=cx+(R-4)*Math.cos(a),y=cy-(R-4)*Math.sin(a);
+    nd=`<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#f8fafc" stroke-width="3" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="5" fill="#f8fafc"/>`}
+  return `<svg class="biggauge" viewBox="-14 -14 228 114">${arc(0,40,"#3f4655")}${arc(40,60,"#f59e0b")}${arc(60,100,"#ea4c1b")}${tick(40)}${tick(60)}${lab(0)}${lab(40)}${lab(60)}${lab(100)}${nd}</svg>`}
+function hbar(lbl,v,tip){return `<div class="sqbar" title="${tip}"><span>${lbl}</span><div class="trk"><i class="${sqZone(v)}" style="width:${v??0}%"></i><b style="left:40%"></b><b style="left:60%"></b></div><em>${v??"–"}</em></div>`}
+function sqChips(S){const W=D.squeeze.weights||{},F=S.factors,out=[];
+  const fmt={si_float:v=>`Short ${Math.round(v)}% float`,dtc:v=>`${(+v).toFixed(1)} days to cover`,si_change:v=>`SI ${v>0?"+":""}${(+v).toFixed(1)}%`,day:v=>`Price ${v>0?"+":""}${(+v).toFixed(1)}%`,d5:v=>`5d ${v>0?"+":""}${(+v).toFixed(1)}%`,
+    vs_high:v=>v>=0?"At 20d high":`${(+v).toFixed(0)}% vs 20d high`,rel_vol:v=>`Stock vol ${(+v).toFixed(1)}x`,opt_pace:v=>`Opt vol ${(+v).toFixed(1)}x`,net_prem:v=>`Net prem ${v>0?"+":""}${Math.round(v*100)}%`,cs_skew:v=>`Calls ${v>0?"+":""}${(+v).toFixed(0)}pp`,otm_short:v=>`ST OTM calls ${Math.round(v)}%`,gex:v=>v<0?"GEX negative":"GEX positive"};
+  for(const [grp,ks] of [["setup",["si_float","dtc","si_change"]],["trigger",["day","d5","vs_high","rel_vol","opt_pace","net_prem","cs_skew","otm_short","gex"]]])for(const k of ks){const f=F[k];if(!f||f.value==null||f.sub==null)continue;
+    out.push({k,grp,sub:f.sub,w:(W[grp]||{})[k]||0,txt:fmt[k](f.value)})}
+  const key=new Set(["si_float","dtc","day"]);
+  return out.filter(o=>key.has(o.k)||o.sub>=30).sort((a,b)=>b.sub*b.w-a.sub*a.w).slice(0,8)
+    .map(o=>`<span class="sqchip ${o.sub>=60?"hi":o.sub>=30?"mid":"lo"} ${o.grp}" title="${SQ_LAB[o.k][0]} · ${o.sub}/100 pts × ${Math.round(o.w*100)}% weight (${o.grp})">${o.grp==="setup"?"◆":"▲"} ${o.txt}</span>`).join("")}
 function sqPanel(t){const S=sqInfo(t);if(!S)return"";const W=(D.squeeze.weights||{});
   const row=(k,grp)=>{const f=S.factors[k];if(!f)return"";const [lab,u]=SQ_LAB[k];let v=f.value;
     if(v==null)v='<span class="muted">n/a</span>';else if(k==="gex")v=(v<0?"negative":"positive")+` ($${money(Math.abs(v))})`;else v=(typeof v==="number"&&v>0&&["si_change","day","d5","cs_skew","net_prem"].includes(k)?"+":"")+v+u;
     return `<tr><td>${lab}</td><td>${v}</td><td>${f.sub==null?"–":f.sub}</td><td>${Math.round((W[grp]||{})[k]*100)}%</td><td class="muted" title="${f.date||""} · ${f.source}">${f.date?(+f.date.slice(5,7))+"/"+(+f.date.slice(8)):"–"}</td></tr>`};
-  const lv=S.score==null?"Not scored (short % of float unavailable)":S.score>=60?"Squeeze conditions":S.score>=40?"Squeeze watch":"Below 40 (badge hidden)";
-  return `<div class="sqpanel"><div class="sqhead"><b>Squeeze meter</b> <span class="info" title="${SQ_INFO}">ⓘ</span>
-   <span class="sqtag ${S.score>=60?"cond":S.score>=40?"watch":"low"}">${gauge(S.score||0)} ${S.score??"–"}</span> <span class="muted">${lv} · setup ${S.setup??"–"} · trigger ${S.trigger??"–"}</span></div>
+  const z=sqZone(S.score),lv=S.score==null?"Not scored":S.score>=60?"Squeeze conditions":S.score>=40?"Squeeze watch":"No squeeze setup";
+  const weak=S.setup!=null&&S.trigger!=null?(S.setup<40&&S.trigger<25?"Both sides weak":S.setup<S.trigger?"Short-interest setup is the weak side":"Momentum/flow trigger is the weak side"):"";
+  return `<div class="sqpanel"><div class="sqhead"><b>Squeeze meter</b> <span class="info" title="${SQ_INFO}">ⓘ</span><span class="muted">risk gauge · not a confirmation</span></div>
+   <div class="sqviz"><div class="sqg-wrap">${bigGauge(S.score)}<div class="sqscore ${z}"><b>${S.score??"–"}</b><span>${lv}</span></div></div>
+   <div class="sqside">${hbar("Setup",S.setup,"Short-interest side: short % of float, days to cover, SI change (as of "+(S.si_date||"n/a")+")")}${hbar("Trigger",S.trigger,"Momentum + flow side: price moves, stock/options volume, inferred premium, short-dated OTM calls, GEX sign (today)")}
+   <div class="muted sqweak">${weak}</div></div></div>
+   <div class="sqchips">${sqChips(S)}</div>
+   <details class="sqdet"><summary>Show factor details</summary>
    <table class="sqt"><tr><th>Factor</th><th>Value</th><th>Pts</th><th>Wt</th><th>As of</th></tr>
    <tr class="grp"><td colspan="5">Setup (short interest)</td></tr>${["si_float","dtc","si_change"].map(k=>row(k,"setup")).join("")}
    <tr class="grp"><td colspan="5">Trigger (momentum + flow)</td></tr>${["day","d5","vs_high","rel_vol","opt_pace","net_prem","cs_skew","otm_short","gex"].map(k=>row(k,"trigger")).join("")}</table>
-   <div class="muted sqnote">Risk gauge, not a confirmed squeeze. Short interest is biweekly and lagged (as of ${S.si_date||"n/a"}); hover a date for its source. Missing factors are skipped, never estimated. Borrow fee not included (no free source).</div></div>`}
+   <div class="muted sqnote">Risk gauge, not a confirmed squeeze. Short interest is biweekly and lagged (as of ${S.si_date||"n/a"}); hover a date for its source. Missing factors are skipped, never estimated. Borrow fee not included (no free source).<br>Method: score = √(setup × trigger), capped at 39 unless setup ≥40 and trigger ≥25, and at 59 unless setup ≥60 and trigger ≥40. Pts = factor scaled 0-100 between the thresholds in <a href="https://github.com/bobbyfarrell20/options-flow-dashboard/blob/main/scripts/squeeze.py" target="_blank" rel="noopener">squeeze.py</a>.</div></details></div>`}
+function radar(){const el=$("#sqRadar");const T=D&&D.squeeze&&D.squeeze.tickers;if(!el)return;if(!T){el.style.display="none";return}el.style.display="";
+  const rows=Object.entries(T).sort((a,b)=>(b[1].score??-1)-(a[1].score??-1));const hi=rows.filter(r=>r[1].score>=40).length;
+  $("#sqrMeta").innerHTML=`${hi?`<b>${hi}</b> at 40+`:"None at 40+ (no badges shown)"} · short interest as of ${rows.map(r=>r[1].si_date).filter(Boolean).sort().pop()||"n/a"} · <span class="info" title="${SQ_INFO}">ⓘ</span>`;
+  $("#sqrBody").innerHTML=rows.map(([t,S])=>`<div class="sqr ${st.tk.size===1&&st.tk.has(t)?"sel":""}" data-t="${t}" title="${t}: ${S.score??"n/a"}/100 · setup ${S.setup??"–"} · trigger ${S.trigger??"–"} · click for Ticker detail">
+     <span class="sqr-t">${t}</span><span class="sqr-g ${sqZone(S.score)}">${gauge(S.score||0)}</span>
+     <div class="sqr-trk"><i class="${sqZone(S.score)}" style="width:${S.score??0}%"></i><b style="left:40%"></b><b style="left:60%"></b></div><span class="sqr-v ${sqZone(S.score)}">${S.score??"–"}</span>
+     <span class="sqr-st"><i style="width:${S.setup??0}%"></i></span><span class="sqr-st tr"><i style="width:${S.trigger??0}%"></i></span></div>`).join("");
+  el.querySelectorAll(".sqr").forEach(e=>e.onclick=()=>{pick(e.dataset.t);const d=$("#tkDetail");d&&d.scrollIntoView({block:"center",behavior:"smooth"})})}
 // ---------- earnings (data/earnings.json via flow.json "earnings"; refreshed daily; unknown -> no badge) ----------
 const etToday=()=>new Date().toLocaleDateString("en-CA",{timeZone:"America/New_York"});
 const dayDiff=(a,b)=>Math.round((Date.parse(b+"T12:00:00Z")-Date.parse(a+"T12:00:00Z"))/864e5);
@@ -115,7 +145,7 @@ function overview(){
   $("#overview").querySelectorAll("tr[data-t]").forEach(e=>e.onclick=()=>pick(e.dataset.t));
 }
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest(".sqtag[data-sq]");if(b){e.stopPropagation();e.preventDefault();pick(b.dataset.sq);const d=document.querySelector(".sqpanel");d&&d.scrollIntoView({block:"nearest",behavior:"smooth"})}},true);
-function pick(t){st.tk=new Set([t]);chips();board();render();detail(t)}
+function pick(t){st.tk=new Set([t]);chips();board();render();radar();detail(t)}
 function detail(t){
   if(!t){$("#tkTitle").textContent="Ticker detail";$("#tkDetail").innerHTML='<span class="muted">Pick a ticker chip to see details.</span>';return}
   const x=tick(t);$("#tkTitle").textContent=`${t} · ${x&&x.name?x.name:""}`;
