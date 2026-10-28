@@ -63,7 +63,7 @@ const md=d=>d?`${+d.slice(5,7)}/${+d.slice(8,10)}`:"";
 function erInfo(t){const E=D&&D.earnings&&D.earnings.tickers&&D.earnings.tickers[t];if(!E)return null;const today=etToday();
   const src=e=>e.source||(E.sources||[]).join(" + ")||"Yahoo";
   const status=e=>e.estimated===true?"estimated (not confirmed)":e.estimated===false?"confirmed":"listed on calendar, not confirmed";
-  const base=e=>`Earnings ${e.date}${e.timing?" "+(e.timing==="BMO"?"before market open (BMO)":"after market close (AMC)"):" (timing not published)"} · ${status(e)} · source: ${src(e)}${(E.sources||[]).length>1?" (dates agree)":""}${E.conflict?" · note: "+E.conflict:""}`;
+  const base=e=>`Earnings ${e.date}${e.timing?" "+(e.timing==="BMO"?"before market open (BMO)":"after market close (AMC)"):" (timing not published)"} · ${status(e)} · source: ${(E.sources||[]).length>1?E.sources.join(" + ")+" (dates agree)":src(e)}${e.timing_source&&e.timing_source!==e.source?" · timing from "+e.timing_source:""}${E.conflict?" · note: "+E.conflict:""}`;
   if(E.next){const d=dayDiff(today,E.next.date);
     if(d===0&&E.next.timing==="BMO")return{kind:"rep",d:0,e:E.next,date:E.next.date,label:`Reported today BMO`,tip:base(E.next)};
     if(d>=0&&d<=7)return{kind:"next",d,e:E.next,date:E.next.date,label:`ER ${d===0?"today":d===1?"tmrw":md(E.next.date)}${E.next.timing?" "+E.next.timing:""}${E.next.estimated===false?"":" est."}`,tip:base(E.next)+` · in ${d} day${d===1?"":"s"}`}}
