@@ -97,9 +97,10 @@ table.netsb thead th:nth-child(1){width:30%}table.netsb thead th:nth-child(2){wi
 /* trade table: whole-row sentiment shading, brighter = more premium + nearer expiry */
 .flow td.cpx,.flow td.sidex{font-weight:700;color:inherit}
 .flow tr.neutral td{background:rgba(140,140,150,.07);color:#a3a8b4}
-.flow tr.bullish.i1 td{background:rgba(34,197,94,.09)}.flow tr.bullish.i2 td{background:rgba(34,197,94,.17)}.flow tr.bullish.i3 td{background:rgba(34,197,94,.27)}.flow tr.bullish.i4 td{background:rgba(34,197,94,.39)}.flow tr.bullish.i5 td{background:rgba(34,197,94,.55);color:#fff}
-.flow tr.bearish.i1 td{background:rgba(239,68,68,.09)}.flow tr.bearish.i2 td{background:rgba(239,68,68,.17)}.flow tr.bearish.i3 td{background:rgba(239,68,68,.27)}.flow tr.bearish.i4 td{background:rgba(239,68,68,.39)}.flow tr.bearish.i5 td{background:rgba(239,68,68,.55);color:#fff}
+.flow tr.bullish.i1 td{background:rgba(34,197,94,.07)}.flow tr.bullish.i2 td{background:rgba(34,197,94,.15)}.flow tr.bullish.i3 td{background:rgba(34,197,94,.26)}.flow tr.bullish.i4 td{background:rgba(34,197,94,.42)}.flow tr.bullish.i5 td{background:rgba(34,197,94,.66);color:#fff}
+.flow tr.bearish.i1 td{background:rgba(239,68,68,.07)}.flow tr.bearish.i2 td{background:rgba(239,68,68,.15)}.flow tr.bearish.i3 td{background:rgba(239,68,68,.26)}.flow tr.bearish.i4 td{background:rgba(239,68,68,.42)}.flow tr.bearish.i5 td{background:rgba(239,68,68,.66);color:#fff}
 .flow tr.i4 td .muted,.flow tr.i5 td .muted{color:#e2e6ee}
 .flow tr:hover td{box-shadow:inset 0 0 0 9999px rgba(108,140,255,.12)}
 .legend{display:flex;flex-wrap:wrap;align-items:center;gap:12px;font-size:11px;color:var(--mut);margin:6px 2px}
 .legend .sw{display:inline-flex;gap:2px;vertical-align:middle;margin-right:4px}.legend .sw i{width:12px;height:12px;border-radius:2px;display:inline-block}
+.flow tr.i4 td{color:#fff}.flow tr.i5 td{color:#fff;font-weight:600}

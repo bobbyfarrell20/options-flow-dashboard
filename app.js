@@ -107,9 +107,17 @@ function rows(){
   }).sort((a,b)=>{let x=a[st.sort],y=b[st.sort];x=x??-1;y=y??-1;return (x>y?1:x<y?-1:0)*st.dir});
 }
 // Row shading: color = inferred sentiment, intensity (1-5) = conviction from premium (log scale) + nearness of expiry.
-function conv(r){const lp=Math.min(1,Math.max(0,(Math.log10(Math.max(r.premium,1))-4.4)/(6.7-4.4))); // $25K..$5M
-  const df=Math.max(0,1-(r.dte||0)/60);                                                                  // 0 DTE = 1, fades out by 60 DTE
-  return Math.max(1,Math.min(5,Math.ceil((0.65*lp+0.35*df)*5)))}
+// Conviction = premium score x expiry score (both must be high), ranked by percentile across ALL directional
+// rows in the loaded snapshot (not the filtered view), so a row keeps its shade when filters change.
+const dirn=r=>r.sentiment==="bullish"||r.sentiment==="bearish";
+function cscore(r){const p=Math.min(1,Math.max(0,(Math.log10(Math.max(r.premium,1))-4)/3)); // $10K..$10M, log scale
+  return p*Math.exp(-(r.dte||0)/20)}                                                          // 0 DTE = 1, 14 DTE ~0.5, 60 DTE ~0.05
+let CUTS=null,CUTS_FOR=null;
+function cuts(){if(CUTS_FOR===D)return CUTS;const v=D.flow.filter(dirn).map(cscore).sort((a,b)=>b-a),q=f=>v[Math.max(0,Math.ceil(v.length*f)-1)]??Infinity;
+  CUTS=[q(.03),q(.10),q(.25),q(.50)];CUTS_FOR=D;return CUTS}   // top 3% / next 7% / next 15% / next 25% / rest
+function conv(r){const c=cuts(),x=cscore(r);let s=x>=c[0]?5:x>=c[1]?4:x>=c[2]?3:x>=c[3]?2:1;
+  if(s>=4&&(r.dte||0)>14)s=3;   // vivid steps are reserved for short-dated trades
+  return s}
 function rowCls(r){return r.sentiment==="bullish"||r.sentiment==="bearish"?`${r.sentiment} i${conv(r)}`:"neutral"}
 function rowTip(r){return r.sentiment==="bullish"||r.sentiment==="bearish"?`Inferred ${r.sentiment} · conviction ${conv(r)}/5 (premium + days to expiry)`:"Neutral / mid / unknown side"}
 function render(){
