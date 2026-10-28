@@ -224,7 +224,7 @@ table.netsb thead th:nth-child(1){width:30%}table.netsb thead th:nth-child(2){wi
 .sqchip{font-size:10.5px;padding:1px 6px;border-radius:10px;border:1px solid;white-space:nowrap}
 .sqchip.lo{color:#9ca3af;border-color:#374151;background:#1a1f2b}.sqchip.mid{color:#fcd34d;border-color:rgba(245,158,11,.5);background:rgba(245,158,11,.1)}.sqchip.hi{color:#fff;border-color:#f97316;background:rgba(234,88,12,.45)}
 .sqdet{margin-top:8px}.sqdet summary{cursor:pointer;font-size:11.5px;color:#93c5fd;user-select:none}.sqdet[open] summary{margin-bottom:4px}
-.sqradar{margin:12px 18px 0;max-width:1500px}
+.sqradar{margin:0 18px 16px;max-width:1500px;box-sizing:border-box}
 .sqr-hd{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:8px}.sqr-hd h3{margin:0}
 .sqr-leg{margin-left:auto;font-size:10.5px;color:#94a3b8;display:flex;align-items:center;gap:4px}.sqr-leg i{display:inline-block;width:10px;height:6px;border-radius:2px;margin-left:6px}
 .sqr-leg i.st{background:#60a5fa}.sqr-leg i.tr{background:#c084fc}

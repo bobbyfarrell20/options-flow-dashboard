@@ -32,8 +32,6 @@
   </div>
   <div class="sb-note" id="sbNote">Premium = running session totals built incrementally: each snapshot classifies only the volume new since the last snapshot (calls near ask / puts near bid = bullish; puts near ask / calls near bid = bearish; mid = neutral) and locks it in. Orders = contracts whose locked-in premium is mostly bullish / bearish. Inferred from delayed public chain data; not confirmed sweeps or blocks. Click a row to focus it in the chart and filter the flow table.</div>
 </section>
-<section class="card sqradar" id="sqRadar"><div class="sqr-hd"><h3>Squeeze radar <small>(risk gauge, not confirmation)</small></h3><span class="muted" id="sqrMeta"></span>
-  <span class="sqr-leg"><i class="low"></i>&lt;40 <i class="watch"></i>40-59 watch <i class="cond"></i>60+ conditions · thin bars: <i class="st"></i>setup <i class="tr"></i>trigger</span></div><div class="sqr-grid" id="sqrBody"></div></section>
 <section class="hist card" id="histCard">
   <div class="fc-head"><h2>Last 5 days</h2>
     <div class="fc-ctl"><span class="seg" id="hMode"><button data-v="cp" class="on">Call share vs 20d avg</button><button data-v="net">Net ÷ premium (inferred)</button></span></div></div>
@@ -72,6 +70,8 @@
     <div class="count" id="count"></div>
   </section>
 </main>
+<section class="card sqradar" id="sqRadar"><div class="sqr-hd"><h3>Squeeze radar <small>(risk gauge, not confirmation)</small></h3><span class="muted" id="sqrMeta"></span>
+  <span class="sqr-leg"><i class="low"></i>&lt;40 <i class="watch"></i>40-59 watch <i class="cond"></i>60+ conditions · thin bars: <i class="st"></i>setup <i class="tr"></i>trigger</span></div><div class="sqr-grid" id="sqrBody"></div></section>
 <footer>Research based on public data — <b>not financial advice</b>. Verify independently and make your own decisions. Not affiliated with any flow-data vendor. *Side inferred, not confirmed. Premium ≈ day volume × last (or mid) × 100. GEX is an approximation from Black-Scholes gamma × OI, assuming dealers are long calls / short puts.</footer>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
