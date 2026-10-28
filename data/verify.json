@@ -1,0 +1,70 @@
+{
+ "checked_at": null,
+ "tickers": {
+  "TSLA": {
+   "status": "unchecked",
+   "checked_at": null
+  },
+  "NVDA": {
+   "status": "unchecked",
+   "checked_at": null
+  },
+  "PLTR": {
+   "status": "unchecked",
+   "checked_at": null
+  },
+  "MU": {
+   "status": "unchecked",
+   "checked_at": null
+  },
+  "SKM": {
+   "status": "unchecked",
+   "checked_at": null
+  },
+  "TSM": {
+   "status": "unchecked",
+   "checked_at": null
+  },
+  "INTC": {
+   "status": "unchecked",
+   "checked_at": null
+  },
+  "MRVL": {
+   "status": "unchecked",
+   "checked_at": null
+  },
+  "BE": {
+   "status": "unchecked",
+   "checked_at": null
+  },
+  "MSTR": {
+   "status": "unchecked",
+   "checked_at": null
+  },
+  "ASST": {
+   "status": "unchecked",
+   "checked_at": null
+  },
+  "SPCX": {
+   "status": "unchecked",
+   "checked_at": null
+  },
+  "ECHO": {
+   "status": "unchecked",
+   "checked_at": null
+  },
+  "TE": {
+   "status": "unchecked",
+   "checked_at": null
+  },
+  "VST": {
+   "status": "unchecked",
+   "checked_at": null
+  },
+  "LYFT": {
+   "status": "unchecked",
+   "checked_at": null
+  }
+ },
+ "days": {}
+}

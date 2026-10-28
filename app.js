@@ -1,7 +1,7 @@
 const RAW_URL="https://raw.githubusercontent.com/bobbyfarrell20/options-flow-dashboard/main/data/flow.json";
 const WATCH=["TSLA","NVDA","PLTR","MU","SKM","TSM","INTC","MRVL","BE","MSTR","ASST","SPCX","ECHO","TE","VST","LYFT"];
 const st={tk:new Set(),cp:"all",sent:"all",minPrem:100000,dte:"9999",unusual:false,otm:false,q:"",sort:"premium",dir:-1};
-let D=null;const $=s=>document.querySelector(s);
+let D=null,V=null;const $=s=>document.querySelector(s);
 const money=v=>v==null?"–":(Math.abs(v)>=1e9?(v/1e9).toFixed(2)+"B":Math.abs(v)>=1e6?(v/1e6).toFixed(2)+"M":Math.abs(v)>=1e3?(v/1e3).toFixed(0)+"K":Math.round(v)+"");
 const n=v=>v==null?"–":Number(v).toLocaleString();
 const tfmt=s=>{if(!s)return"–";const d=new Date(s);return d.toLocaleString("en-US",{timeZone:"America/New_York",month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"})};
@@ -11,6 +11,9 @@ async function load(){
   const got=(await Promise.all([get("data/flow.json"),get(RAW_URL)])).filter(Boolean);
   if(!got.length){$("#stamp").textContent="Could not load data";return false}
   D=got.sort((a,b)=>new Date(b.generated_at)-new Date(a.generated_at))[0];
+  // per-ticker cross-check status (status + time only); newest of the Pages and raw copies, same cache-buster as flow.json
+  const vs=(await Promise.all([get("data/verify.json"),get(RAW_URL.replace("flow.json","verify.json"))])).filter(Boolean);
+  V=vs.sort((a,b)=>new Date(b.checked_at||0)-new Date(a.checked_at||0))[0]||V;
   const g=new Date(D.generated_at);
   $("#stamp").textContent=`Snapshot ${g.toLocaleString("en-US",{timeZone:"America/New_York",weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})} ET · ${D.market_open_at_snapshot?"market open (delayed)":"market closed — latest session"}`;
   $("#dot").className="dot "+(D.market_open_at_snapshot?"live":"closed");
@@ -44,17 +47,32 @@ function board(){
   const tn=b.bull_total-b.bear_total;
   $("#netTotal").innerHTML=`Watchlist <b class="${tn>=0?"C":"P"}">${sg(tn)}</b>`;
   $("#sbNet").innerHTML=withD.map(x=>{const w=(Math.abs(x.net)/mx*50).toFixed(1);
-    return `<tr data-t="${x.ticker}" class="${st.tk.size===1&&st.tk.has(x.ticker)?"sel":""}"><td>${x.ticker}${vb(x.ticker)}${confMark(dirSig(x.ticker))}</td><td class="c"><div class="dv"><i class="${x.net>=0?"pos":"neg"}" style="width:${w}%"></i><span class="${x.net>=0?"C":"P"}">${sg(x.net)}</span></div></td><td class="r">${x.no>0?"+":""}${n(x.no)}</td></tr>`}).join("")
+    return `<tr data-t="${x.ticker}" class="${st.tk.size===1&&st.tk.has(x.ticker)?"sel":""}"><td>${x.ticker}${vfy(x.ticker)}${vb(x.ticker)}${confMark(dirSig(x.ticker))}</td><td class="c"><div class="dv"><i class="${x.net>=0?"pos":"neg"}" style="width:${w}%"></i><span class="${x.net>=0?"C":"P"}">${sg(x.net)}</span></div></td><td class="r">${x.no>0?"+":""}${n(x.no)}</td></tr>`}).join("")
    +noD.map(x=>`<tr data-t="${x.ticker}" class="nodata"><td>${x.ticker}</td><td class="c">—</td><td class="r">—</td></tr>`).join("");
   $("#sbNet").querySelectorAll("tr[data-t]").forEach(e=>e.onclick=()=>{pick(e.dataset.t);if(typeof focusTicker==="function")focusTicker(e.dataset.t)});
   const src=b.side_sources||{},cached=Object.keys(src).filter(k=>src[k]==="cached"),na=Object.keys(src).filter(k=>src[k]==="unavailable");
   let extra="";if(cached.length)extra+=` Sides for ${cached.join(", ")} carried from the last in-session snapshot (current quotes are pre-market/after-hours).`;
   if(na.length)extra+=` No side data for ${na.join(", ")} (no trades yet in the current session, or quotes outside session hours).`;
   $("#sbNote").dataset.base=$("#sbNote").dataset.base||$("#sbNote").textContent;$("#sbNote").textContent=$("#sbNote").dataset.base+extra+volNote();
+  if($("#vfyLeg"))$("#vfyLeg").innerHTML=vfyLegend();
   const cf=WATCH.filter(t=>{const s=dirSig(t);return s&&s.conflict});
   if(cf.length)$("#sbNote").textContent+=` ⚠ = this ticker's call/put volume mix (vs its 20-day normal) points the other way from its buy/sell flow here (hover for numbers). Now: ${cf.join(", ")}.`;
 }
 function tick(t){return D.tickers.find(x=>x.ticker===t)}
+// ---- cross-check badge: status only (no outside data). Checks from an earlier ET day count as unchecked.
+const etDay=d=>d.toLocaleDateString("en-CA",{timeZone:"America/New_York"});
+function vstat(t){const r=V&&V.tickers&&V.tickers[t];if(!r||!r.checked_at||!["ok","off"].includes(r.status))return{s:"unchecked"};
+  const d=new Date(r.checked_at);if(isNaN(d)||etDay(d)!==etDay(new Date()))return{s:"unchecked",stale:true};
+  return{s:r.status,hm:d.toLocaleTimeString("en-US",{timeZone:"America/New_York",hour:"numeric",minute:"2-digit"})}}
+function vfy(t){const v=vstat(t);
+  if(v.s==="ok")return`<span class="vfy ok" title="Cross-checked against a private trade-side source at ${v.hm} ET: in line">✓</span>`;
+  if(v.s==="off")return`<span class="vfy off" title="Cross-checked against a private trade-side source at ${v.hm} ET: doesn't match, don't rely on this ticker's side data today">✗ Off</span>`;
+  return""}   // unchecked (or checked on an earlier day): no badge
+function vfyDay(t,d){const s=V&&V.days&&V.days[d]&&V.days[d][t];
+  if(s==="ok")return'<span class="vfy ok" title="Cross-checked after close: in line">✓</span>';
+  if(s==="off")return'<span class="vfy off" title="Cross-checked after close: doesn\'t match, don\'t rely on this day\'s number">✗ Off</span>';return""}
+function vfyLegend(){const ok=WATCH.filter(t=>vstat(t).s==="ok"),off=WATCH.filter(t=>vstat(t).s==="off");
+  return`Cross-check: <span class="vfy ok">✓</span> side flow checked against a private trade-side source today and in line · <span class="vfy off">✗ Off</span> doesn't match, don't rely on that ticker's side data today · no badge = not checked today. Status only; no outside data is shown.${ok.length||off.length?` Now: ${ok.length?"in line "+ok.join(", "):""}${ok.length&&off.length?"; ":""}${off.length?"off "+off.join(", "):""}.`:""}`}
 // Cross-check of the two "direction" signals for the current session, shared by the Net flow card and the 5-day scoreboard:
 //  pp = call share of volume vs the ticker's own 20-session average (volume mix, no side)
 //  np = inferred net premium ÷ directional premium (same numbers as the Net flow card)
@@ -70,7 +88,7 @@ function dirConf(pp,np,net){const conflict=pp!=null&&np!=null&&pp!==0&&np!==0&&M
     :`Puts heavy (${f1(pp)} pp vs normal) but buy/sell flow is bullish (net ${sg(net)}, ${f1(np)}% of directional premium): puts mostly sold at the bid and/or calls bought at the ask.`;
   return{pp,np,net,conflict,minor,msg:msg&&(minor?"Minor conflict (one side is near zero). ":"")+msg}}
 function confMark(s){return s&&s.conflict?`<span class="cfl${s.minor?" minor":""}" title="${s.msg}">⚠</span>`:""}
-(()=>{const st=document.createElement("style");st.textContent=`.cfl{color:#fbbf24;font-weight:800;margin-left:3px;cursor:help;text-shadow:0 0 2px #000}.cfl.minor{opacity:.55}.sc-cell .cfl{font-size:10px;margin-left:2px}.h-cap{display:block;margin:2px 0 4px;color:#c9d3ea;font-size:12px}.h-cap b{color:#fff}.sc-cell.vol{color:#aab3c5;font-weight:500;opacity:.85}.voltag{font-size:7.5px;font-weight:700;color:#cbd5e1;border:1px solid #64748b;border-radius:3px;padding:0 2px;margin-left:3px;vertical-align:1px;letter-spacing:.3px}`;document.head.appendChild(st)})();
+(()=>{const st=document.createElement("style");st.textContent=`.vfy{display:inline-block;margin-left:4px;font-size:9.5px;font-weight:800;line-height:13px;border-radius:7px;padding:0 4px;vertical-align:1px;cursor:help;text-shadow:none}.vfy.ok{background:#15803d;color:#fff;border:1px solid #22c55e}.vfy.off{background:#b91c1c;color:#fff;border:1px solid #f87171;letter-spacing:.2px}.vfy.un{color:#4b5563;padding:0 1px;font-size:11px}.vfy-leg{font-size:11px;color:#9aa3b5;margin-top:6px;line-height:1.6}.cfl{color:#fbbf24;font-weight:800;margin-left:3px;cursor:help;text-shadow:0 0 2px #000}.cfl.minor{opacity:.55}.sc-cell .cfl{font-size:10px;margin-left:2px}.h-cap{display:block;margin:2px 0 4px;color:#c9d3ea;font-size:12px}.h-cap b{color:#fff}.sc-cell.vol{color:#aab3c5;font-weight:500;opacity:.85}.voltag{font-size:7.5px;font-weight:700;color:#cbd5e1;border:1px solid #64748b;border-radius:3px;padding:0 2px;margin-left:3px;vertical-align:1px;letter-spacing:.3px}`;document.head.appendChild(st)})();
 const POSITIONS=new Set(["LYFT"]); // tickers Bobby holds a position in (marker only, no details)
 function pos(t){return POSITIONS.has(t)?'<span class="postag" title="You hold a position in this ticker">POS</span>':""}
 function vb(t,full){return pos(t)+er(t,!full)+sq(t,!full)+vb0(t)}
@@ -149,7 +167,7 @@ function vb0(t){const x=tick(t),v=x&&x.vol_vs_avg;if(!v||!v.flag)return"";
   return ` <span class="vb ${v.flag}" title="${tip2}">🔥${v.flag_ratio.toFixed(1)}x</span>`}
 function chips(){
   const c=$("#chips");c.innerHTML=`<button class="chip ${st.tk.size?"":"on"}" data-t="ALL">All watchlist</button>`+WATCH.map(t=>{const x=tick(t);const ch=x&&x.change_pct!=null?x.change_pct:null;
-    return `<button class="chip ${st.tk.has(t)?"on":""} ${x&&x.status==="ok"?"":"bad"}" data-t="${t}" title="${x?(x.name||x.message||""):""}">${t}${vb(t,1)}${ch!=null?`<span class="d ${ch>=0?"C":"P"}">${ch>=0?"+":""}${ch.toFixed(1)}%</span>`:""}</button>`}).join("");
+    return `<button class="chip ${st.tk.has(t)?"on":""} ${x&&x.status==="ok"?"":"bad"}" data-t="${t}" title="${x?(x.name||x.message||""):""}">${t}${vfy(t)}${vb(t,1)}${ch!=null?`<span class="d ${ch>=0?"C":"P"}">${ch>=0?"+":""}${ch.toFixed(1)}%</span>`:""}</button>`}).join("");
   c.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{const t=b.dataset.t;if(t==="ALL")st.tk.clear();else st.tk.has(t)?st.tk.delete(t):st.tk.add(t);chips();board();render();detail(t==="ALL"?null:t)});
 }
 function leaders(){
