@@ -21,7 +21,7 @@ table{border-collapse:collapse;width:100%}
 .flow th{position:sticky;top:0;background:var(--panel2);color:var(--mut);font-weight:600;text-align:right;padding:7px 8px;cursor:pointer;white-space:nowrap;border-bottom:1px solid var(--line)}
 .flow td{padding:5px 8px;text-align:right;border-bottom:1px solid #182030;white-space:nowrap;font-variant-numeric:tabular-nums}
 .flow th:nth-child(-n+2),.flow td:nth-child(-n+2){text-align:left}
-.flow tr.bullish td{background:var(--gbg)}.flow tr.bearish td{background:var(--rbg)}.flow tr:hover td{background:#1d2536}
+.flow tr:hover td{background:#1d2536}
 .C{color:var(--g);font-weight:700}.P{color:var(--r);font-weight:700}.tk{font-weight:700;color:#fff}
 .side-ask{color:var(--g)}.side-bid{color:var(--r)}.side-mid,.side-na{color:var(--mut)}
 .prem{font-weight:700}.big{color:var(--y)}
@@ -93,3 +93,13 @@ table.netsb thead th:nth-child(1){width:30%}table.netsb thead th:nth-child(2){wi
 @keyframes rot{to{transform:rotate(360deg)}}
 @media(max-width:900px){.sb-cards{grid-template-columns:1fr}.sb-card.net{order:-1}}
 .pos{display:inline-block;margin-left:4px;padding:0 4px;font-size:9px;font-weight:700;letter-spacing:.04em;line-height:14px;border:1px solid #6c8cff;color:#9fb3ff;border-radius:3px;vertical-align:middle}
+
+/* trade table: whole-row sentiment shading, brighter = more premium + nearer expiry */
+.flow td.cpx,.flow td.sidex{font-weight:700;color:inherit}
+.flow tr.neutral td{background:rgba(140,140,150,.07);color:#a3a8b4}
+.flow tr.bullish.i1 td{background:rgba(34,197,94,.09)}.flow tr.bullish.i2 td{background:rgba(34,197,94,.17)}.flow tr.bullish.i3 td{background:rgba(34,197,94,.27)}.flow tr.bullish.i4 td{background:rgba(34,197,94,.39)}.flow tr.bullish.i5 td{background:rgba(34,197,94,.55);color:#fff}
+.flow tr.bearish.i1 td{background:rgba(239,68,68,.09)}.flow tr.bearish.i2 td{background:rgba(239,68,68,.17)}.flow tr.bearish.i3 td{background:rgba(239,68,68,.27)}.flow tr.bearish.i4 td{background:rgba(239,68,68,.39)}.flow tr.bearish.i5 td{background:rgba(239,68,68,.55);color:#fff}
+.flow tr.i4 td .muted,.flow tr.i5 td .muted{color:#e2e6ee}
+.flow tr:hover td{box-shadow:inset 0 0 0 9999px rgba(108,140,255,.12)}
+.legend{display:flex;flex-wrap:wrap;align-items:center;gap:12px;font-size:11px;color:var(--mut);margin:6px 2px}
+.legend .sw{display:inline-flex;gap:2px;vertical-align:middle;margin-right:4px}.legend .sw i{width:12px;height:12px;border-radius:2px;display:inline-block}

@@ -106,14 +106,20 @@ function rows(){
     if(st.q&&!(r.symbol+" "+r.strike).toLowerCase().includes(st.q))return false;return true;
   }).sort((a,b)=>{let x=a[st.sort],y=b[st.sort];x=x??-1;y=y??-1;return (x>y?1:x<y?-1:0)*st.dir});
 }
+// Row shading: color = inferred sentiment, intensity (1-5) = conviction from premium (log scale) + nearness of expiry.
+function conv(r){const lp=Math.min(1,Math.max(0,(Math.log10(Math.max(r.premium,1))-4.4)/(6.7-4.4))); // $25K..$5M
+  const df=Math.max(0,1-(r.dte||0)/60);                                                                  // 0 DTE = 1, fades out by 60 DTE
+  return Math.max(1,Math.min(5,Math.ceil((0.65*lp+0.35*df)*5)))}
+function rowCls(r){return r.sentiment==="bullish"||r.sentiment==="bearish"?`${r.sentiment} i${conv(r)}`:"neutral"}
+function rowTip(r){return r.sentiment==="bullish"||r.sentiment==="bearish"?`Inferred ${r.sentiment} · conviction ${conv(r)}/5 (premium + days to expiry)`:"Neutral / mid / unknown side"}
 function render(){
   const R=rows(),tb=$("#flow tbody");
-  tb.innerHTML=R.slice(0,600).map(r=>`<tr class="${r.sentiment}">
-   <td>${tfmt(r.time)}</td><td class="tk">${r.ticker}</td><td>${r.expiry} <span class="muted">${r.dte}d</span></td><td>${r.strike}</td><td class="${r.cp}">${r.cp==="C"?"CALL":"PUT"}</td>
-   <td class="side-${r.side}">${{ask:"Ask",bid:"Bid",mid:"Mid",na:"–"}[r.side]}</td><td>${r.spot}</td><td>${r.last.toFixed(2)} <span class="muted">${r.bid.toFixed(2)}/${r.ask.toFixed(2)}</span></td>
+  tb.innerHTML=R.slice(0,600).map(r=>`<tr class="${rowCls(r)}" title="${rowTip(r)}">
+   <td>${tfmt(r.time)}</td><td class="tk">${r.ticker}</td><td>${r.expiry} <span class="muted">${r.dte}d</span></td><td>${r.strike}</td><td class="cpx">${r.cp==="C"?"CALL":"PUT"}</td>
+   <td class="sidex">${{ask:"Ask",bid:"Bid",mid:"Mid",na:"–"}[r.side]}</td><td>${r.spot}</td><td>${r.last.toFixed(2)} <span class="muted">${r.bid.toFixed(2)}/${r.ask.toFixed(2)}</span></td>
    <td>${n(r.vol)}</td><td class="prem ${r.premium>=1e6?"big":""}">$${money(r.premium)}</td><td>${n(r.oi)}</td><td>${r.vol_oi==null?"–":r.vol_oi>=999?"new":r.vol_oi.toFixed(2)}</td><td>${r.iv.toFixed(1)}%</td>
    <td>${r.tags.map(t=>`<span class="tag ${t.split(" ")[0]}">${t}</span>`).join("")}</td></tr>`).join("");
-  $("#count").textContent=`${R.length} contracts match${R.length>600?" (showing top 600)":""} · sorted by ${st.sort} · green = inferred bullish, red = inferred bearish`;
+  $("#count").textContent=`${R.length} contracts match${R.length>600?" (showing top 600)":""} · sorted by ${st.sort}`;
 }
 function seg(id,key){document.querySelectorAll(id+" button").forEach(b=>b.onclick=()=>{document.querySelectorAll(id+" button").forEach(x=>x.classList.remove("on"));b.classList.add("on");st[key]=b.dataset.v;render()})}
 seg("#cpSeg","cp");seg("#sentSeg","sent");
