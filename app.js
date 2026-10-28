@@ -28,7 +28,7 @@ function board(){
   fill("#sbBull",b.bullish);fill("#sbBear",b.bearish);
   const src=b.side_sources||{},cached=Object.keys(src).filter(k=>src[k]==="cached"),na=Object.keys(src).filter(k=>src[k]==="unavailable");
   let extra="";if(cached.length)extra+=` Sides for ${cached.join(", ")} carried from the last in-session snapshot (current quotes are pre-market/after-hours).`;
-  if(na.length)extra+=` No side data for ${na.join(", ")} (quotes not from the trading session).`;
+  if(na.length)extra+=` No side data for ${na.join(", ")} (no trades yet in the current session, or quotes outside session hours).`;
   $("#sbNote").dataset.base=$("#sbNote").dataset.base||$("#sbNote").textContent;$("#sbNote").textContent=$("#sbNote").dataset.base+extra;
 }
 function tick(t){return D.tickers.find(x=>x.ticker===t)}
