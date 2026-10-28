@@ -8,6 +8,7 @@ import os
 import volume_baseline as vb
 import timeseries as ts
 import daily
+import bigmoney
 import incremental as inc
 import earnings
 import squeeze
@@ -167,10 +168,10 @@ def process(sym, expected):
         c["side"] = "na" if sen is None else SIDE_OF.get((sen, c["cp"]), "mid")
     # Running totals across ALL session-traded contracts seen this session (not just the displayed tape rows).
     tot = inc.totals(state) if state else {}
-    fs = {k: tot.get(k, 0) for k in ("bull_orders", "bull_premium", "bear_orders", "bear_premium", "neutral_orders", "neutral_premium", "bull_vol", "bear_vol", "neutral_vol")}
+    fs = {k: tot.get(k, 0) for k in ("bull_orders", "bull_premium", "bear_orders", "bear_premium", "neutral_orders", "neutral_premium", "bull_vol", "bear_vol", "neutral_vol", "big_bull_premium", "big_bear_premium")}
     fs["method"] = "incremental"
     if state:
-        fs.update(snapshots=state.get("n"), corrections=state.get("corr", 0), classified_through=state.get("ts"))
+        fs.update(snapshots=state.get("n"), corrections=state.get("corr", 0), classified_through=state.get("ts"), big_since=state.get("big_since"))
     if interval is not None:
         fs["interval"] = {"bull_premium": interval[0], "bear_premium": interval[1], "neutral_premium": interval[2]}
         fs["correction_adjust"] = {"bull_premium": adjust[0], "bear_premium": adjust[1], "neutral_premium": adjust[2]}
@@ -316,6 +317,8 @@ def main():
             if t.get("session_date") != now.date().isoformat(): frac_t = 1.0
             else: frac_t = frac
             sq[t["ticker"]] = squeeze.compute(t, scache["tickers"].get(t["ticker"], {}), data.get("daily"), frac_t, now.date())
+        try: bigmoney.annotate(tickers, scache, data.get("daily"), now.date())
+        except Exception as ex: print("big money failed:", ex)
         data["squeeze"] = {"fetched_at": scache.get("fetched_at"), "tickers": sq,
                            "weights": {"setup": squeeze.SETUP_W, "trigger": squeeze.TRIG_W}}
     except Exception as ex: print("squeeze failed:", ex)

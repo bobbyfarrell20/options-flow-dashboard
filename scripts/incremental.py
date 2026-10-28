@@ -8,7 +8,11 @@ volume/premium is added to persisted per-contract buckets and never re-classifie
 
 State per ticker (data/sides.json[SYM]):
   {"session_date", "method": "incremental", "n": snapshots applied, "ts": last snapshot time,
-   "corr": volume-decrease corrections, "c": {contract: [last_cum_vol, bull_v, bear_v, neu_v, bull_$, bear_$, neu_$]}}
+   "corr": volume-decrease corrections, "big_since": first snapshot that tracked big money,
+   "c": {contract: [last_cum_vol, bull_v, bear_v, neu_v, bull_$, bear_$, neu_$, big_bull_$, big_bear_$]}}
+Big money vs small lots (ESTIMATE): each classified batch (one contract's volume added between two snapshots)
+whose premium is >= BIG_BATCH counts as "big money", smaller batches as "small lots". A batch can be many
+trades and a big trade can be split across batches, so this is a size estimate, not a trade-by-trade split.
 Rules
   * new session_date -> state resets (running totals restart each session)
   * first time a contract is seen in a session -> its whole cumulative volume is the delta
@@ -20,6 +24,7 @@ Rules
     proportionally to the new cumulative volume; nothing is re-classified
 """
 SENT = ("bull", "bear", "neu")
+BIG_BATCH = 250_000   # $ premium in one contract-batch
 
 def infer_side(bid, ask, last):
     if bid > 0 and ask > 0 and ask >= bid:
@@ -57,32 +62,35 @@ def step(state, session_date, contracts, ts=None):
         if b is None:
             if vol <= 0: continue
             b = C[sym] = [0, 0, 0, 0, 0, 0, 0]
+        if len(b) < 9: b.extend([0] * (9 - len(b)))   # states saved before big-money tracking
         prev = b[0]
         if vol > prev:
             d = vol - prev
             i = bucket(k["cp"], infer_side(k["bid"], k["ask"], k["last"]))
             p = d * price(k["bid"], k["ask"], k["last"]) * 100
             b[1 + i] += d; b[4 + i] += round(p); iv[i] += round(p)
+            if i < 2 and p >= BIG_BATCH: b[7 + i] += round(p)
             b[0] = vol
         elif 0 < vol < prev:
             # correction: shrink locked buckets to the corrected cumulative volume (no re-classification)
             f = vol / prev if prev > 0 else 0
-            for j in range(1, 7):
+            for j in range(1, len(b)):
                 nv = int(round(b[j] * f))
-                if j >= 4: adj[j - 4] += b[j] - nv
+                if 4 <= j <= 6: adj[j - 4] += b[j] - nv
                 b[j] = nv
             b[0] = vol; state["corr"] += 1
         # vol == 0 while prev > 0: treated as missing/unreported this snapshot -> buckets stay locked
-    state["n"] += 1; state["ts"] = ts
+    state["n"] += 1; state["ts"] = ts; state.setdefault("big_since", ts)
     return state, iv, adj
 
 def totals(state):
     t = {"bull_premium": 0, "bear_premium": 0, "neutral_premium": 0, "bull_orders": 0, "bear_orders": 0, "neutral_orders": 0,
-         "bull_vol": 0, "bear_vol": 0, "neutral_vol": 0}
+         "bull_vol": 0, "bear_vol": 0, "neutral_vol": 0, "big_bull_premium": 0, "big_bear_premium": 0}
     names = ("bull", "bear", "neutral")
     for b in (state or {}).get("c", {}).values():
         for i, n in enumerate(names):
             t[n + "_premium"] += b[4 + i]; t[n + "_vol"] += b[1 + i]
+        if len(b) >= 9: t["big_bull_premium"] += b[7]; t["big_bear_premium"] += b[8]
         if b[0] > 0: t[names[dominant(b)] + "_orders"] += 1
     return t
 

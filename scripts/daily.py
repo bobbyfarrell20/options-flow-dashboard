@@ -21,7 +21,9 @@ def update(data, now):
         row[t["ticker"]] = {"bull": round(fs["bull_premium"]), "bear": round(fs["bear_premium"]),
                             "net": round(fs["bull_premium"] - fs["bear_premium"]),
                             "call_vol": cv, "put_vol": pv, "pc": t.get("pc_vol"),
-                            "vol": v.get("today"), "avg20": v.get("baseline"), "vol_ratio": v.get("ratio")}
+                            "vol": v.get("today"), "avg20": v.get("baseline"), "vol_ratio": v.get("ratio"),
+                            # big money (>= $250K premium per contract-batch, an estimate) vs small lots; big_since = when tracking began that day
+                            "big_bull": fs.get("big_bull_premium"), "big_bear": fs.get("big_bear_premium"), "big_since": fs.get("big_since")}
     if row and now.weekday() < 5 and now.time() >= dt.time(9, 30):
         h["days"][today] = {"as_of": now.isoformat(timespec="minutes"), "final": now.time() >= dt.time(16, 15), "t": row}
     for k in sorted(h["days"])[:-KEEP]: del h["days"][k]

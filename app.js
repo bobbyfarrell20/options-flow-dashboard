@@ -47,7 +47,7 @@ function board(){
   const tn=b.bull_total-b.bear_total;
   $("#netTotal").innerHTML=`Watchlist <b class="${tn>=0?"C":"P"}">${sg(tn)}</b>`;
   $("#sbNet").innerHTML=withD.map(x=>{const w=(Math.abs(x.net)/mx*50).toFixed(1);
-    return `<tr data-t="${x.ticker}" class="${st.tk.size===1&&st.tk.has(x.ticker)?"sel":""}"><td>${x.ticker}${vfy(x.ticker)}${vb(x.ticker)}${confMark(dirSig(x.ticker))}</td><td class="c"><div class="dv"><i class="${x.net>=0?"pos":"neg"}" style="width:${w}%"></i><span class="${x.net>=0?"C":"P"}">${sg(x.net)}</span></div></td><td class="r">${x.no>0?"+":""}${n(x.no)}</td></tr>`}).join("")
+    return `<tr data-t="${x.ticker}" class="${st.tk.size===1&&st.tk.has(x.ticker)?"sel":""}"><td>${x.ticker}${vfy(x.ticker)}${vb(x.ticker)}${confMark(dirSig(x.ticker))}${bigPip(x.ticker)}</td><td class="c"><div class="dv"><i class="${x.net>=0?"pos":"neg"}" style="width:${w}%"></i><span class="${x.net>=0?"C":"P"}">${sg(x.net)}</span></div></td><td class="r">${x.no>0?"+":""}${n(x.no)}</td></tr>`}).join("")
    +noD.map(x=>`<tr data-t="${x.ticker}" class="nodata"><td>${x.ticker}</td><td class="c">—</td><td class="r">—</td></tr>`).join("");
   $("#sbNet").querySelectorAll("tr[data-t]").forEach(e=>e.onclick=()=>{pick(e.dataset.t);if(typeof focusTicker==="function")focusTicker(e.dataset.t)});
   const src=b.side_sources||{},cached=Object.keys(src).filter(k=>src[k]==="cached"),na=Object.keys(src).filter(k=>src[k]==="unavailable");
@@ -56,6 +56,7 @@ function board(){
   $("#sbNote").dataset.base=$("#sbNote").dataset.base||$("#sbNote").textContent;$("#sbNote").textContent=$("#sbNote").dataset.base+extra+volNote();
   if($("#vfyLeg"))$("#vfyLeg").innerHTML=vfyLegend();
   const cf=WATCH.filter(t=>{const s=dirSig(t);return s&&s.conflict});
+  if((D.tickers||[]).some(x=>x.big_money))$("#sbNote").textContent+=` Small dot after a ticker = big-money lean (green/red/gray; ≥$250K contract batches, estimate, hover for the big vs small split). ⤓ = possible distribution (price rallying while big money leans bearish).`;
   if(cf.length)$("#sbNote").textContent+=` ⚠ = this ticker's call/put volume mix (vs its 20-day normal) points the other way from its buy/sell flow here (hover for numbers). Now: ${cf.join(", ")}.`;
 }
 function tick(t){return D.tickers.find(x=>x.ticker===t)}
@@ -71,6 +72,16 @@ function vfy(t){const v=vstat(t);
 function vfyDay(t,d){const s=V&&V.days&&V.days[d]&&V.days[d][t];
   if(s==="ok")return'<span class="vfy ok" title="Cross-checked after close: in line">✓</span>';
   if(s==="off")return'<span class="vfy off" title="Cross-checked after close: doesn\'t match, don\'t rely on this day\'s number">✗ Off</span>';return""}
+function bigPip(t){const x=tick(t),g=x&&x.big_money;if(!g)return"";
+  const M=v=>(v<0?"-":"")+"$"+(Math.abs(v)>=1e6?(Math.abs(v)/1e6).toFixed(1)+"M":Math.round(Math.abs(v)/1e3)+"K"),nb=g.bull-g.bear,ns=g.small_bull-g.small_bear;
+  const since=g.since?new Date(g.since).toLocaleTimeString("en-US",{timeZone:"America/New_York",hour:"numeric",minute:"2-digit"}):null;
+  const late=since&&new Date(g.since).toLocaleTimeString("en-US",{timeZone:"America/New_York",hour12:false,hour:"2-digit",minute:"2-digit"})>"09:50";
+  const tip=`Big money vs small lots (estimate)\nBig money (≥ $${g.threshold/1e3}K premium in one contract between snapshots): bull ${M(g.bull)} / bear ${M(g.bear)} = net ${nb>=0?"+":""}${M(nb)} → leans ${g.lean}\nSmall lots: bull ${M(g.small_bull)} / bear ${M(g.small_bear)} = net ${ns>=0?"+":""}${M(ns)}`+
+    (late?`\nBig money tracked from ${since} ET today; earlier volume is counted as small lots.`:"")+
+    `\nBatches are volume added between ~10-min snapshots, not individual trades: an estimate, not a trade-by-trade split.`;
+  let h=`<span class="bigp ${g.lean==="bullish"?"bu":g.lean==="bearish"?"be":"ne"}" title="${tip.replace(/"/g,"&quot;")}"></span>`;
+  const d=g.dist;if(d&&d.flag){const p=d.price;h+=`<span class="dist" title="${("Price rallying while large-premium flow leans bearish, possible distribution. Estimate."+(p?`\nPrice up ${p.up_days} of the last ${p.of} sessions (${p.chg_pct>=0?"+":""}${p.chg_pct}%); big-money net today ${M(nb)}`:"")+(d.multi?`; over ${d.multi.sessions} sessions ${M(d.multi.net)}`:"")).replace(/"/g,"&quot;")}">⤓</span>`}
+  return h}
 function vfyLegend(){const ok=WATCH.filter(t=>vstat(t).s==="ok"),off=WATCH.filter(t=>vstat(t).s==="off");
   return`Cross-check: <span class="vfy ok">✓</span> side flow checked against a private trade-side source today and in line · <span class="vfy off">✗ Off</span> doesn't match, don't rely on that ticker's side data today · no badge = not checked today. Status only; no outside data is shown.${ok.length||off.length?` Now: ${ok.length?"in line "+ok.join(", "):""}${ok.length&&off.length?"; ":""}${off.length?"off "+off.join(", "):""}.`:""}`}
 // Cross-check of the two "direction" signals for the current session, shared by the Net flow card and the 5-day scoreboard:
@@ -88,7 +99,7 @@ function dirConf(pp,np,net){const conflict=pp!=null&&np!=null&&pp!==0&&np!==0&&M
     :`Puts heavy (${f1(pp)} pp vs normal) but buy/sell flow is bullish (net ${sg(net)}, ${f1(np)}% of directional premium): puts mostly sold at the bid and/or calls bought at the ask.`;
   return{pp,np,net,conflict,minor,msg:msg&&(minor?"Minor conflict (one side is near zero). ":"")+msg}}
 function confMark(s){return s&&s.conflict?`<span class="cfl${s.minor?" minor":""}" title="${s.msg}">⚠</span>`:""}
-(()=>{const st=document.createElement("style");st.textContent=`.vfy{display:inline-block;margin-left:4px;font-size:9.5px;font-weight:800;line-height:13px;border-radius:7px;padding:0 4px;vertical-align:1px;cursor:help;text-shadow:none}.vfy.ok{background:#15803d;color:#fff;border:1px solid #22c55e}.vfy.off{background:#b91c1c;color:#fff;border:1px solid #f87171;letter-spacing:.2px}.vfy.un{color:#4b5563;padding:0 1px;font-size:11px}.vfy-leg{font-size:11px;color:#9aa3b5;margin-top:6px;line-height:1.6}.cfl{color:#fbbf24;font-weight:800;margin-left:3px;cursor:help;text-shadow:0 0 2px #000}.cfl.minor{opacity:.55}.sc-cell .cfl{font-size:10px;margin-left:2px}.h-cap{display:block;margin:2px 0 4px;color:#c9d3ea;font-size:12px}.h-cap b{color:#fff}.sc-cell.vol{color:#aab3c5;font-weight:500;opacity:.85}.voltag{font-size:7.5px;font-weight:700;color:#cbd5e1;border:1px solid #64748b;border-radius:3px;padding:0 2px;margin-left:3px;vertical-align:1px;letter-spacing:.3px}`;document.head.appendChild(st)})();
+(()=>{const st=document.createElement("style");st.textContent=`.vfy{display:inline-block;margin-left:4px;font-size:9.5px;font-weight:800;line-height:13px;border-radius:7px;padding:0 4px;vertical-align:1px;cursor:help;text-shadow:none}.vfy.ok{background:#15803d;color:#fff;border:1px solid #22c55e}.vfy.off{background:#b91c1c;color:#fff;border:1px solid #f87171;letter-spacing:.2px}.vfy.un{color:#4b5563;padding:0 1px;font-size:11px}.bigp{display:inline-block;width:6px;height:6px;border-radius:50%;margin-left:4px;vertical-align:1px;cursor:help}.bigp.bu{background:#22c55e}.bigp.be{background:#ef4444}.bigp.ne{background:#6b7280}.dist{color:#c084fc;font-weight:900;font-size:11px;margin-left:3px;cursor:help}.vfy-leg{font-size:11px;color:#9aa3b5;margin-top:6px;line-height:1.6}.cfl{color:#fbbf24;font-weight:800;margin-left:3px;cursor:help;text-shadow:0 0 2px #000}.cfl.minor{opacity:.55}.sc-cell .cfl{font-size:10px;margin-left:2px}.h-cap{display:block;margin:2px 0 4px;color:#c9d3ea;font-size:12px}.h-cap b{color:#fff}.sc-cell.vol{color:#aab3c5;font-weight:500;opacity:.85}.voltag{font-size:7.5px;font-weight:700;color:#cbd5e1;border:1px solid #64748b;border-radius:3px;padding:0 2px;margin-left:3px;vertical-align:1px;letter-spacing:.3px}`;document.head.appendChild(st)})();
 const POSITIONS=new Set(["LYFT"]); // tickers Bobby holds a position in (marker only, no details)
 function pos(t){return POSITIONS.has(t)?'<span class="postag" title="You hold a position in this ticker">POS</span>':""}
 function vb(t,full){return pos(t)+er(t,!full)+sq(t,!full)+vb0(t)}
