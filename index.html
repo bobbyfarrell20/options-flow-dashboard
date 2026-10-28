@@ -6,19 +6,38 @@
 </head><body>
 <header class="top">
   <div class="brand"><span class="logo">◆</span> Farrell<b>Flow</b></div>
-  <div class="status"><span id="dot" class="dot"></span><span id="stamp">Loading…</span><button id="refreshBtn" class="refresh" title="Loads the latest data snapshot; new snapshots arrive about every 30 min during market hours."><span class="ic">⟳</span> <span class="lb">Refresh</span></button></div>
+  <div class="status"><span id="dot" class="dot"></span><span id="stamp">Loading…</span><button id="refreshBtn" class="refresh" title="Loads the latest data snapshot; new snapshots arrive about every 10 min during market hours."><span class="ic">⟳</span> <span class="lb">Refresh</span></button></div>
   <div class="hdr-stats" id="hdrStats"></div>
 </header>
 <section class="sentboard" id="sentboard">
   <div class="sb-strip" id="sbStrip"></div>
-  <div class="sb-cards">
-    <div class="sb-card"><h2>Bullish flow</h2><table class="sb bull"><thead><tr><th>TICKER</th><th>ORDERS</th><th>PREMIUM</th></tr></thead><tbody id="sbBull"></tbody></table></div>
+  <div class="sb-cards two">
     <div class="sb-card net"><h2>Net flow <span class="net-total" id="netTotal"></span></h2><table class="sb netsb"><thead><tr><th>TICKER</th><th class="c">NET PREMIUM</th><th class="r">NET ORDERS</th></tr></thead><tbody id="sbNet"></tbody></table></div>
-    <div class="sb-card"><h2>Bearish flow</h2><table class="sb bear"><thead><tr><th>TICKER</th><th>ORDERS</th><th>PREMIUM</th></tr></thead><tbody id="sbBear"></tbody></table></div>
+    <div class="sb-card fc" id="flowChartCard">
+      <div class="fc-head"><h2>Net flow over time</h2>
+        <div class="fc-ctl">
+          <span class="seg" id="fcMode"><button data-v="cum" class="on">Cumulative</button><button data-v="int">Per interval</button></span>
+          <label class="chk" id="fcNormWrap" title="Multi-ticker view: cumulative = net as % of that ticker's directional premium; per interval = scaled to each ticker's own largest move"><input type="checkbox" id="fcNorm"> Normalize</label>
+          <span class="seg" id="fcPresets"><button data-v="30">30m</button><button data-v="60">1h</button><button data-v="120">2h</button><button data-v="full">Full session</button><button data-v="auto">Fit</button></span>
+          <span class="fc-date"><button id="fcPrev" title="Previous stored session">◀</button><span id="fcDate">–</span><button id="fcNext" title="Next session">▶</button></span>
+        </div></div>
+      <div class="fc-chips" id="fcChips"></div>
+      <div class="fc-msg" id="fcMsg" style="display:none"></div>
+      <div class="fc-canvas" id="fcCanvasWrap"><canvas id="fcCanvas"></canvas></div>
+      <div class="fc-brush" id="fcBrush" title="Drag the window to pan, drag its edges to resize, or drag elsewhere to select a range"><div class="data"></div><div class="win"><span data-h="l"></span><span data-h="r"></span></div><div class="lab"><span>9:30</span><span>12:00</span><span>4:00 PM</span></div></div>
+      <div class="fc-foot"><span id="fcInfo"></span> · Each point is a delayed (~15 min) snapshot of the session's cumulative inferred flow; side is inferred, and earlier trades can be re-classified as quotes move. Wheel/pinch to zoom, drag to pan. Dots = flips (net crossed zero).</div>
+    </div>
   </div>
-  <div class="sb-note" id="sbNote">Orders = contracts traded in the latest session with an inferred side (calls near ask / puts near bid = bullish; puts near ask / calls near bid = bearish). Inferred from delayed public chain data; not confirmed sweeps or blocks. Mid-priced trades are excluded. Click a row to filter the flow table.</div>
+  <div class="sb-note" id="sbNote">Orders = contracts traded in the latest session with an inferred side (calls near ask / puts near bid = bullish; puts near ask / calls near bid = bearish). Inferred from delayed public chain data; not confirmed sweeps or blocks. Mid-priced trades are excluded. Click a row to focus it in the chart and filter the flow table.</div>
 </section>
-<div class="notice">Data is derived from <b>delayed (~15 min) public option-chain snapshots</b> (Yahoo Finance via yfinance), refreshed about every 30 min in market hours — <b>not a live trade-by-trade tape</b>. Sweeps, blocks, and true buy/sell side can't be confirmed. "Side" and sentiment are <i>inferred</i> from last price vs. bid/ask (near ask → call bullish / put bearish; near bid → the reverse). Row time = contract's last trade time. Contracts whose last trade is not in the latest session are excluded from volume/premium (Yahoo can carry stale volume).</div>
+<section class="hist card" id="histCard">
+  <div class="fc-head"><h2>Last 5 days</h2>
+    <div class="fc-ctl"><span class="seg" id="hMode"><button data-v="net" class="on">Net premium (inferred)</button><button data-v="cp">Call vs put volume</button></span></div></div>
+  <div class="fc-chips" id="hChips"></div>
+  <div id="hBody"></div>
+  <div class="fc-foot" id="hNote"></div>
+</section>
+<div class="notice">Data is derived from <b>delayed (~15 min) public option-chain snapshots</b> (Yahoo Finance via yfinance), refreshed about every 10 min in market hours (GitHub schedules can lag) — <b>not a live trade-by-trade tape</b>. Sweeps, blocks, and true buy/sell side can't be confirmed. "Side" and sentiment are <i>inferred</i> from last price vs. bid/ask (near ask → call bullish / put bearish; near bid → the reverse). Row time = contract's last trade time. Contracts whose last trade is not in the latest session are excluded from volume/premium (Yahoo can carry stale volume).</div>
 <main class="layout">
   <aside class="side">
     <section class="card"><h3>Sentiment leaders <small>(inferred)</small></h3><div id="leaders"></div></section>
@@ -50,5 +69,10 @@
   </section>
 </main>
 <footer>Research based on public data — <b>not financial advice</b>. Verify independently and make your own decisions. Not affiliated with any flow-data vendor. *Side inferred, not confirmed. Premium ≈ day volume × last (or mid) × 100. GEX is an approximation from Black-Scholes gamma × OI, assuming dealers are long calls / short puts.</footer>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <script src="app.js"></script>
+<script src="chart.js"></script>
+<script src="history.js"></script>
 </body></html>

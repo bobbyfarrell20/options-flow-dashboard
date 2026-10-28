@@ -17,7 +17,9 @@ async function load(){
   const ok=D.tickers.filter(t=>t.status==="ok");
   const cp=ok.reduce((a,t)=>a+t.call_premium,0),pp=ok.reduce((a,t)=>a+t.put_premium,0);
   $("#hdrStats").innerHTML=`<div>Call prem <b class="C">$${money(cp)}</b></div><div>Put prem <b class="P">$${money(pp)}</b></div><div>P/C prem <b>${(pp/cp).toFixed(2)}</b></div><div>Tape rows <b>${D.flow.length}</b></div>`;
-  chips();board();leaders();overview();render();if(st.tk.size===1)detail([...st.tk][0]);return true;
+  chips();board();leaders();overview();render();if(st.tk.size===1)detail([...st.tk][0]);
+  try{if(typeof chartLoad==="function")await chartLoad();if(typeof hDraw==="function")hDraw()}catch(e){console.error(e)}
+  return true;
 }
 function volNote(){const m=D.volume_meta;if(!m)return"";const ok=D.tickers.filter(t=>t.vol_vs_avg&&t.vol_vs_avg.baseline_days>=m.min_days).length;
   const fl=D.tickers.filter(t=>t.vol_vs_avg&&t.vol_vs_avg.flag).map(t=>t.ticker);
@@ -33,7 +35,6 @@ function board(){
   const fill=(id,rows)=>{const top=rows.length?rows[0].premium:1;
     $(id).innerHTML=rows.length?rows.map(r=>`<tr data-t="${r.ticker}" class="${st.tk.size===1&&st.tk.has(r.ticker)?"sel":""}" style="background-size:${Math.max(2,r.premium/top*100).toFixed(1)}% 100%"><td>${r.ticker}${vb(r.ticker)}</td><td>${n(r.orders)}</td><td>${money(r.premium)}</td></tr>`).join(""):`<tr class="empty"><td colspan="3">No inferred flow available</td></tr>`;
     $(id).querySelectorAll("tr[data-t]").forEach(e=>e.onclick=()=>{pick(e.dataset.t);document.querySelector(".tablewrap").scrollIntoView({behavior:"smooth"})});};
-  fill("#sbBull",b.bullish);fill("#sbBear",b.bearish);
   const nets=D.tickers.filter(t=>t.status==="ok").map(t=>{const f=t.flow_sentiment||{},has=t.side_source!=="unavailable"&&((f.bull_premium||0)+(f.bear_premium||0))>0;
     return {ticker:t.ticker,has,net:(f.bull_premium||0)-(f.bear_premium||0),no:(f.bull_orders||0)-(f.bear_orders||0)}});
   D.tickers.filter(t=>t.status!=="ok").forEach(t=>nets.push({ticker:t.ticker,has:false,net:0,no:0}));
@@ -44,7 +45,7 @@ function board(){
   $("#sbNet").innerHTML=withD.map(x=>{const w=(Math.abs(x.net)/mx*50).toFixed(1);
     return `<tr data-t="${x.ticker}" class="${st.tk.size===1&&st.tk.has(x.ticker)?"sel":""}"><td>${x.ticker}${vb(x.ticker)}</td><td class="c"><div class="dv"><i class="${x.net>=0?"pos":"neg"}" style="width:${w}%"></i><span class="${x.net>=0?"C":"P"}">${sg(x.net)}</span></div></td><td class="r">${x.no>0?"+":""}${n(x.no)}</td></tr>`}).join("")
    +noD.map(x=>`<tr data-t="${x.ticker}" class="nodata"><td>${x.ticker}</td><td class="c">—</td><td class="r">—</td></tr>`).join("");
-  $("#sbNet").querySelectorAll("tr[data-t]").forEach(e=>e.onclick=()=>{pick(e.dataset.t);document.querySelector(".tablewrap").scrollIntoView({behavior:"smooth"})});
+  $("#sbNet").querySelectorAll("tr[data-t]").forEach(e=>e.onclick=()=>{pick(e.dataset.t);if(typeof focusTicker==="function")focusTicker(e.dataset.t)});
   const src=b.side_sources||{},cached=Object.keys(src).filter(k=>src[k]==="cached"),na=Object.keys(src).filter(k=>src[k]==="unavailable");
   let extra="";if(cached.length)extra+=` Sides for ${cached.join(", ")} carried from the last in-session snapshot (current quotes are pre-market/after-hours).`;
   if(na.length)extra+=` No side data for ${na.join(", ")} (no trades yet in the current session, or quotes outside session hours).`;

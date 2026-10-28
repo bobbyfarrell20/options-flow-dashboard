@@ -4,7 +4,10 @@ No data is fabricated: anything that fails is recorded as an error for that tick
 import json, math, datetime as dt, time, traceback
 from zoneinfo import ZoneInfo
 import yfinance as yf
+import os
 import volume_baseline as vb
+import timeseries as ts
+import daily
 
 ET = ZoneInfo("America/New_York")
 WATCHLIST = [
@@ -267,6 +270,23 @@ def main():
     keep = {sym for sym, _ in WATCHLIST}
     for k in [k for k in SIDE_CACHE if k not in keep]: del SIDE_CACHE[k]   # drop removed tickers
     with open(SIDES_PATH, "w") as fh: json.dump(SIDE_CACHE, fh, separators=(",", ":"))
+    try:   # append this snapshot to today's intraday series and embed the latest session's series
+        series = ts.append(data)
+        if series is None:
+            files = sorted(f for f in os.listdir(ts.DIR) if f.endswith(".json")) if os.path.isdir(ts.DIR) else []
+            series = ts.load(files[-1][:-5]) if files else None
+        data["timeseries"] = series
+    except Exception as ex: print("timeseries failed:", ex)
+    try:
+        os.makedirs(ts.DIR, exist_ok=True)
+        json.dump({"dates": sorted(f[:-5] for f in os.listdir(ts.DIR) if f.endswith(".json") and f != "index.json")},
+                  open(f"{ts.DIR}/index.json", "w"))
+    except Exception as ex: print("timeseries index failed:", ex)
+    try:
+        hist = vb.update_cp(hist, [s for s, _ in WATCHLIST], now.date()); vb.save(hist)
+    except Exception as ex: print("OCC call/put update failed:", ex)
+    try: data["daily"] = daily.payload(daily.update(data, now), hist, now.date())
+    except Exception as ex: print("daily history failed:", ex)
     with open("data/flow.json", "w") as fh: json.dump(data, fh, separators=(",", ":"))
     print("wrote", len(flow), "rows")
 
