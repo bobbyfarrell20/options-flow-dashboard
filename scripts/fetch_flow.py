@@ -4,6 +4,7 @@ No data is fabricated: anything that fails is recorded as an error for that tick
 import json, math, datetime as dt, time, traceback
 from zoneinfo import ZoneInfo
 import yfinance as yf
+import volume_baseline as vb
 
 ET = ZoneInfo("America/New_York")
 WATCHLIST = [
@@ -121,6 +122,17 @@ def process(sym, expected):
         if c["vol"] > 0 and (not c["ts"] or c["ts"][:10] != session_date):
             c["vol"], c["premium"], stale = 0, 0, stale + 1
             c["vol_oi"] = None
+    # Total session volume across ALL listed expirations (for the unusual-volume vs baseline check).
+    extra_vol = 0
+    for e in [x for x in (tk.options or []) if x not in exps]:
+        try: ch = tk.option_chain(e)
+        except Exception: continue
+        for df in (ch.calls, ch.puts):
+            for r in df[["volume", "lastTradeDate"]].to_dict("records"):
+                v, ts = int(num(r.get("volume"))), r.get("lastTradeDate")
+                try:
+                    if v > 0 and ts is not None and ts.to_pydatetime().astimezone(ET).date().isoformat() == session_date: extra_vol += v
+                except Exception: pass
     cvol = sum(c["vol"] for c in all_contracts if c["cp"] == "C"); pvol = sum(c["vol"] for c in all_contracts if c["cp"] == "P")
     coi = sum(c["oi"] for c in all_contracts if c["cp"] == "C"); poi = sum(c["oi"] for c in all_contracts if c["cp"] == "P")
     cprem = sum(c["premium"] for c in all_contracts if c["cp"] == "C"); pprem = sum(c["premium"] for c in all_contracts if c["cp"] == "P")
@@ -178,7 +190,7 @@ def process(sym, expected):
         "call_vol": cvol, "put_vol": pvol, "pc_vol": round(pvol / cvol, 2) if cvol else None,
         "call_oi": coi, "put_oi": poi, "pc_oi": round(poi / coi, 2) if coi else None,
         "call_premium": cprem, "put_premium": pprem,
-        "bull_premium": bull, "bear_premium": bear, "flow_sentiment": fs, "side_source": side_source,
+        "bull_premium": bull, "bear_premium": bear, "flow_sentiment": fs, "side_source": side_source, "total_session_volume": cvol + pvol + extra_vol,
         "unusual_count": unusual_total,
         "nearest_expiry": near["expiry"] if near else None, "max_pain": near["max_pain"] if near else None,
         "top_oi": top_oi, "gex_total": round(total_gex), 
@@ -201,6 +213,33 @@ def main():
                 time.sleep(2)
         tickers.append(t); flow.extend(f)
         print(sym, t.get("status"), t.get("name", ""), "rows", len(f))
+    # Unusual options volume vs OCC 20-session average daily volume.
+    hist = vb.load()
+    try: hist = vb.update(hist, [s for s, _ in WATCHLIST], now.date())
+    except Exception as ex: print("OCC history update failed:", ex)
+    vb.save(hist)
+    for t in tickers:
+        if t.get("status") != "ok": continue
+        sd = t.get("session_date"); base, n = vb.baseline(hist, t["ticker"], sd or now.date().isoformat())
+        v = {"today": t["total_session_volume"], "session_date": sd, "baseline": round(base) if base else None, "baseline_days": n,
+             "ratio": None, "pace_ratio": None, "session_fraction": None, "flag": None, "basis": None}
+        if base and n >= vb.MIN_DAYS:
+            v["ratio"] = round(t["total_session_volume"] / base, 2)
+            frac = 1.0
+            if sd == now.date().isoformat() and now.weekday() < 5:
+                eff = now - dt.timedelta(minutes=15)   # quotes are ~15 min delayed
+                mins = (eff.hour * 60 + eff.minute) - (9 * 60 + 30)
+                frac = min(1.0, max(0.0, mins / 390))
+            v["session_fraction"] = round(frac, 3)
+            if frac >= 1.0:
+                v["pace_ratio"], v["basis"], use = v["ratio"], "full session", v["ratio"]
+            elif frac >= 30 / 390:
+                v["pace_ratio"] = round(v["ratio"] / frac, 2); v["basis"], use = "pace", v["pace_ratio"]
+            else:
+                v["basis"], use = "raw (first 30 min, pace unreliable)", v["ratio"]
+            v["flag"] = "extreme" if use >= 3 else ("high" if use >= 1.5 else None)
+            v["flag_ratio"] = use
+        t["vol_vs_avg"] = v
     def score(t):
         b, r = t["flow_sentiment"]["bull_premium"], t["flow_sentiment"]["bear_premium"]
         return (b - r) / (b + r) if (b + r) else 0
@@ -221,7 +260,9 @@ def main():
                        "bull_orders": sum(t["flow_sentiment"]["bull_orders"] for t in ok), "bear_orders": sum(t["flow_sentiment"]["bear_orders"] for t in ok),
                        "neutral_total": sum(t["flow_sentiment"]["neutral_premium"] for t in ok),
                        "side_sources": {t["ticker"]: t["side_source"] for t in ok}}
-    data = {"sentiment_board": sentiment_board, "generated_at": now.isoformat(), "market_open_at_snapshot": open_, "source": "Yahoo Finance option chains via yfinance (delayed ~15 min)",
+    vol_meta = {"source": hist.get("source"), "days_in_history": len(hist["days"]), "latest_day": max(hist["days"]) if hist["days"] else None,
+                "lookback": vb.LOOKBACK, "min_days": vb.MIN_DAYS, "thresholds": {"high": 1.5, "extreme": 3.0}}
+    data = {"volume_meta": vol_meta, "sentiment_board": sentiment_board, "generated_at": now.isoformat(), "market_open_at_snapshot": open_, "source": "Yahoo Finance option chains via yfinance (delayed ~15 min)",
             "tickers": tickers, "flow": sorted(flow, key=lambda r: r["premium"], reverse=True), "summary": summary}
     with open(SIDES_PATH, "w") as fh: json.dump(SIDE_CACHE, fh, separators=(",", ":"))
     with open("data/flow.json", "w") as fh: json.dump(data, fh, separators=(",", ":"))

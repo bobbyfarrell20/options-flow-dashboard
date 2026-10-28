@@ -62,7 +62,6 @@ table.sb .empty td{color:#8a8a92;cursor:default}
 table.sb tbody tr.empty{background-image:none!important}
 /* Net flow card */
 .sb-cards{grid-template-columns:1fr 1fr 1fr}
-@media(max-width:1100px){.sb-cards{grid-template-columns:1fr}.sb-card.net{order:-1}}
 .sb-card.net h2{display:flex;justify-content:space-between;align-items:baseline}
 .net-total{font-size:13px;color:#a9a9b0}.net-total b{font-size:16px;margin-left:4px}
 table.netsb thead th{text-align:left}table.netsb th.c,table.netsb td.c{text-align:center}table.netsb th.r,table.netsb td.r{text-align:right}
@@ -75,3 +74,21 @@ table.netsb td.c{padding:6px 8px}
 .dv i.neg{right:50%;background:linear-gradient(270deg,#5c1c20,#b8323a);border-radius:3px 0 0 3px}
 .dv span{position:relative;font-weight:600;text-shadow:0 1px 2px #000;background:rgba(20,20,22,.55);padding:0 5px;border-radius:3px}
 table.netsb tr.nodata td{color:#7a7a82}
+/* unusual volume badge */
+.vb{display:inline-block;font-size:10.5px;font-weight:700;padding:0 4px;border-radius:4px;margin-left:4px;background:#3d2a0e;color:#ffb347;border:1px solid #6b4a14;vertical-align:1px;cursor:help}
+.vb.extreme{background:#ff7a1a;color:#1a0d00;border-color:#ffb347;box-shadow:0 0 6px rgba(255,122,26,.6)}
+.chip.on .vb{background:#3d2a0e}
+/* compact 3-column board */
+.sentboard{max-width:1500px}
+.sb-cards{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.sb-card{padding:8px 8px 10px}.sb-card h2{font-size:16px;margin:2px 4px 8px}
+table.sb{font-size:12.5px;table-layout:fixed}
+table.sb thead th{padding:8px 10px;font-size:11px}
+table.sb tbody td{padding:6px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+table.netsb td.c{padding:3px 4px}.dv{height:20px}
+table.netsb thead th:nth-child(1){width:30%}table.netsb thead th:nth-child(2){width:46%}
+.refresh{margin-left:8px;background:#1d2536;color:#c9d3ea;border:1px solid #2c3750;border-radius:6px;padding:3px 10px;cursor:pointer;font:inherit}
+.refresh:hover{border-color:#6c8cff;color:#fff}.refresh:disabled{opacity:.8;cursor:default}
+.refresh .ic{display:inline-block}.refresh.spin .ic{animation:rot .8s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+@media(max-width:900px){.sb-cards{grid-template-columns:1fr}.sb-card.net{order:-1}}

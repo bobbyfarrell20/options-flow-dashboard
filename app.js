@@ -1,3 +1,4 @@
+const RAW_URL="https://raw.githubusercontent.com/bobbyfarrell20/options-flow-dashboard/main/data/flow.json";
 const WATCH=["TSLA","NVDA","PLTR","MU","SKM","TSM","INTC","MRVL","BE","MSTR","ASST","SPCX","ECHO","TE","VRT"];
 const st={tk:new Set(),cp:"all",sent:"all",minPrem:100000,dte:"9999",unusual:false,otm:false,q:"",sort:"premium",dir:-1};
 let D=null;const $=s=>document.querySelector(s);
@@ -5,15 +6,22 @@ const money=v=>v==null?"–":(Math.abs(v)>=1e9?(v/1e9).toFixed(2)+"B":Math.abs(v
 const n=v=>v==null?"–":Number(v).toLocaleString();
 const tfmt=s=>{if(!s)return"–";const d=new Date(s);return d.toLocaleString("en-US",{timeZone:"America/New_York",month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"})};
 async function load(){
-  try{const r=await fetch("data/flow.json?ts="+Date.now());D=await r.json();}catch(e){$("#stamp").textContent="Could not load data";return}
+  // Fetch both the Pages copy and the raw GitHub copy (updates right after a workflow commit) and keep the newest snapshot.
+  const ts=Date.now(),get=u=>fetch(u+"?ts="+ts,{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null);
+  const got=(await Promise.all([get("data/flow.json"),get(RAW_URL)])).filter(Boolean);
+  if(!got.length){$("#stamp").textContent="Could not load data";return false}
+  D=got.sort((a,b)=>new Date(b.generated_at)-new Date(a.generated_at))[0];
   const g=new Date(D.generated_at);
   $("#stamp").textContent=`Snapshot ${g.toLocaleString("en-US",{timeZone:"America/New_York",weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})} ET · ${D.market_open_at_snapshot?"market open (delayed)":"market closed — latest session"}`;
   $("#dot").className="dot "+(D.market_open_at_snapshot?"live":"closed");
   const ok=D.tickers.filter(t=>t.status==="ok");
   const cp=ok.reduce((a,t)=>a+t.call_premium,0),pp=ok.reduce((a,t)=>a+t.put_premium,0);
   $("#hdrStats").innerHTML=`<div>Call prem <b class="C">$${money(cp)}</b></div><div>Put prem <b class="P">$${money(pp)}</b></div><div>P/C prem <b>${(pp/cp).toFixed(2)}</b></div><div>Tape rows <b>${D.flow.length}</b></div>`;
-  chips();board();leaders();overview();render();
+  chips();board();leaders();overview();render();if(st.tk.size===1)detail([...st.tk][0]);return true;
 }
+function volNote(){const m=D.volume_meta;if(!m)return"";const ok=D.tickers.filter(t=>t.vol_vs_avg&&t.vol_vs_avg.baseline_days>=m.min_days).length;
+  const fl=D.tickers.filter(t=>t.vol_vs_avg&&t.vol_vs_avg.flag).map(t=>t.ticker);
+  return ok?` 🔥 = options volume ≥1.5x (strong ≥3x) its ${m.lookback}-session average daily options volume from OCC (pace-adjusted intraday; hover a badge for details). Flagged: ${fl.join(", ")||"none"}.`:" 🔥 Unusual-volume badges: baseline building (need "+m.min_days+" sessions of OCC history).";}
 function board(){
   const b=D.sentiment_board;if(!b){$("#sentboard").style.display="none";return}
   const tot=b.bull_total+b.bear_total,bp=tot?b.bull_total/tot*100:50;
@@ -23,7 +31,7 @@ function board(){
    <div style="text-align:right"><div class="lbl">Bearish premium</div><div class="val r">$${money(b.bear_total)}</div><div class="sb-pct">${n(b.bear_orders)} orders</div></div>
    <div class="sb-pct"><b class="C">${bp.toFixed(0)}%</b> bull / <b class="P">${(100-bp).toFixed(0)}%</b> bear<br><span class="muted">Bull:Bear ${b.bear_total?(b.bull_total/b.bear_total).toFixed(2):"–"}</span></div>`;}
   const fill=(id,rows)=>{const top=rows.length?rows[0].premium:1;
-    $(id).innerHTML=rows.length?rows.map(r=>`<tr data-t="${r.ticker}" class="${st.tk.size===1&&st.tk.has(r.ticker)?"sel":""}" style="background-size:${Math.max(2,r.premium/top*100).toFixed(1)}% 100%"><td>${r.ticker}</td><td>${n(r.orders)}</td><td>${money(r.premium)}</td></tr>`).join(""):`<tr class="empty"><td colspan="3">No inferred flow available</td></tr>`;
+    $(id).innerHTML=rows.length?rows.map(r=>`<tr data-t="${r.ticker}" class="${st.tk.size===1&&st.tk.has(r.ticker)?"sel":""}" style="background-size:${Math.max(2,r.premium/top*100).toFixed(1)}% 100%"><td>${r.ticker}${vb(r.ticker)}</td><td>${n(r.orders)}</td><td>${money(r.premium)}</td></tr>`).join(""):`<tr class="empty"><td colspan="3">No inferred flow available</td></tr>`;
     $(id).querySelectorAll("tr[data-t]").forEach(e=>e.onclick=()=>{pick(e.dataset.t);document.querySelector(".tablewrap").scrollIntoView({behavior:"smooth"})});};
   fill("#sbBull",b.bullish);fill("#sbBear",b.bearish);
   const nets=D.tickers.filter(t=>t.status==="ok").map(t=>{const f=t.flow_sentiment||{},has=t.side_source!=="unavailable"&&((f.bull_premium||0)+(f.bear_premium||0))>0;
@@ -34,18 +42,21 @@ function board(){
   const tn=b.bull_total-b.bear_total;
   $("#netTotal").innerHTML=`Watchlist <b class="${tn>=0?"C":"P"}">${sg(tn)}</b>`;
   $("#sbNet").innerHTML=withD.map(x=>{const w=(Math.abs(x.net)/mx*50).toFixed(1);
-    return `<tr data-t="${x.ticker}" class="${st.tk.size===1&&st.tk.has(x.ticker)?"sel":""}"><td>${x.ticker}</td><td class="c"><div class="dv"><i class="${x.net>=0?"pos":"neg"}" style="width:${w}%"></i><span class="${x.net>=0?"C":"P"}">${sg(x.net)}</span></div></td><td class="r">${x.no>0?"+":""}${n(x.no)}</td></tr>`}).join("")
+    return `<tr data-t="${x.ticker}" class="${st.tk.size===1&&st.tk.has(x.ticker)?"sel":""}"><td>${x.ticker}${vb(x.ticker)}</td><td class="c"><div class="dv"><i class="${x.net>=0?"pos":"neg"}" style="width:${w}%"></i><span class="${x.net>=0?"C":"P"}">${sg(x.net)}</span></div></td><td class="r">${x.no>0?"+":""}${n(x.no)}</td></tr>`}).join("")
    +noD.map(x=>`<tr data-t="${x.ticker}" class="nodata"><td>${x.ticker}</td><td class="c">—</td><td class="r">—</td></tr>`).join("");
   $("#sbNet").querySelectorAll("tr[data-t]").forEach(e=>e.onclick=()=>{pick(e.dataset.t);document.querySelector(".tablewrap").scrollIntoView({behavior:"smooth"})});
   const src=b.side_sources||{},cached=Object.keys(src).filter(k=>src[k]==="cached"),na=Object.keys(src).filter(k=>src[k]==="unavailable");
   let extra="";if(cached.length)extra+=` Sides for ${cached.join(", ")} carried from the last in-session snapshot (current quotes are pre-market/after-hours).`;
   if(na.length)extra+=` No side data for ${na.join(", ")} (no trades yet in the current session, or quotes outside session hours).`;
-  $("#sbNote").dataset.base=$("#sbNote").dataset.base||$("#sbNote").textContent;$("#sbNote").textContent=$("#sbNote").dataset.base+extra;
+  $("#sbNote").dataset.base=$("#sbNote").dataset.base||$("#sbNote").textContent;$("#sbNote").textContent=$("#sbNote").dataset.base+extra+volNote();
 }
 function tick(t){return D.tickers.find(x=>x.ticker===t)}
+function vb(t){const x=tick(t),v=x&&x.vol_vs_avg;if(!v||!v.flag)return"";
+  const tip=`Options volume ${n(v.today)} contracts (all expirations, session ${v.session_date}) vs ${v.baseline_days}-session avg ${n(v.baseline)} (OCC). Raw ratio ${v.ratio}x`+(v.basis==="pace"?`; pace ratio ${v.pace_ratio}x = raw ÷ ${(v.session_fraction*100).toFixed(0)}% of session elapsed (assumes even volume through the day; early-session pace overstates).`:v.basis==="full session"?" (full session).":` (${v.basis}).`)+` Badge at ≥1.5x, strong at ≥3x.`;
+  return ` <span class="vb ${v.flag}" title="${tip}">🔥${v.flag_ratio.toFixed(1)}x</span>`}
 function chips(){
   const c=$("#chips");c.innerHTML=`<button class="chip ${st.tk.size?"":"on"}" data-t="ALL">All watchlist</button>`+WATCH.map(t=>{const x=tick(t);const ch=x&&x.change_pct!=null?x.change_pct:null;
-    return `<button class="chip ${st.tk.has(t)?"on":""} ${x&&x.status==="ok"?"":"bad"}" data-t="${t}" title="${x?(x.name||x.message||""):""}">${t}${ch!=null?`<span class="d ${ch>=0?"C":"P"}">${ch>=0?"+":""}${ch.toFixed(1)}%</span>`:""}</button>`}).join("");
+    return `<button class="chip ${st.tk.has(t)?"on":""} ${x&&x.status==="ok"?"":"bad"}" data-t="${t}" title="${x?(x.name||x.message||""):""}">${t}${vb(t)}${ch!=null?`<span class="d ${ch>=0?"C":"P"}">${ch>=0?"+":""}${ch.toFixed(1)}%</span>`:""}</button>`}).join("");
   c.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{const t=b.dataset.t;if(t==="ALL")st.tk.clear();else st.tk.has(t)?st.tk.delete(t):st.tk.add(t);chips();board();render();detail(t==="ALL"?null:t)});
 }
 function leaders(){
@@ -56,7 +67,7 @@ function leaders(){
 function overview(){
   $("#overview").innerHTML=`<tr><th>Tkr</th><th>Spot</th><th>P/C vol</th><th>Call $</th><th>Put $</th><th>Max pain</th></tr>`+WATCH.map(t=>{const x=tick(t);
     if(!x||x.status!=="ok")return `<tr data-t="${t}"><td><b>${t}</b></td><td colspan="5" class="muted">${x?(x.message||"no options data"):"no data"}</td></tr>`;
-    return `<tr data-t="${t}"><td><b>${t}</b>${x.name_ok?"":' <span class="warn">⚠</span>'}</td><td>${x.spot}</td><td class="${x.pc_vol>1?"P":"C"}">${x.pc_vol??"–"}</td><td>${money(x.call_premium)}</td><td>${money(x.put_premium)}</td><td>${x.max_pain??"–"}</td></tr>`}).join("");
+    return `<tr data-t="${t}"><td><b>${t}</b>${vb(t)}${x.name_ok?"":' <span class="warn">⚠</span>'}</td><td>${x.spot}</td><td class="${x.pc_vol>1?"P":"C"}">${x.pc_vol??"–"}</td><td>${money(x.call_premium)}</td><td>${money(x.put_premium)}</td><td>${x.max_pain??"–"}</td></tr>`}).join("");
   $("#overview").querySelectorAll("tr[data-t]").forEach(e=>e.onclick=()=>pick(e.dataset.t));
 }
 function pick(t){st.tk=new Set([t]);chips();board();render();detail(t)}
@@ -107,4 +118,9 @@ $("#minPrem").onchange=e=>{st.minPrem=+e.target.value;render()};$("#dteSel").onc
 $("#unusualOnly").onchange=e=>{st.unusual=e.target.checked;render()};$("#otmOnly").onchange=e=>{st.otm=e.target.checked;render()};
 $("#search").oninput=e=>{st.q=e.target.value.toLowerCase();render()};
 document.querySelectorAll("#flow th[data-k]").forEach(th=>th.onclick=()=>{const k=th.dataset.k;st.dir=st.sort===k?-st.dir:-1;st.sort=k;render()});
+const rb=$("#refreshBtn");
+rb.onclick=async()=>{if(rb.disabled)return;const prev=D&&D.generated_at;rb.disabled=true;rb.classList.add("spin");rb.querySelector(".lb").textContent="Loading…";
+  const ok=await load();rb.classList.remove("spin");
+  rb.querySelector(".lb").textContent=!ok?"Failed":(D.generated_at!==prev?"Updated":"Up to date");
+  setTimeout(()=>{rb.querySelector(".lb").textContent="Refresh";rb.disabled=false},2000)};
 load();setInterval(load,5*60*1000);
