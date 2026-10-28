@@ -9,6 +9,7 @@ import volume_baseline as vb
 import timeseries as ts
 import daily
 import incremental as inc
+import earnings
 
 ET = ZoneInfo("America/New_York")
 WATCHLIST = [
@@ -296,6 +297,10 @@ def main():
     except Exception as ex: print("OCC call/put update failed:", ex)
     try: data["daily"] = daily.payload(daily.update(data, now), hist, now.date())
     except Exception as ex: print("daily history failed:", ex)
+    try:   # next earnings dates (cached; refetched once per ET day)
+        ec = earnings.update([s for s, _ in WATCHLIST], now)
+        data["earnings"] = {k: ec.get(k) for k in ("fetched", "fetched_at", "sources", "tickers")}
+    except Exception as ex: print("earnings failed:", ex)
     with open("data/flow.json", "w") as fh: json.dump(data, fh, separators=(",", ":"))
     print("wrote", len(flow), "rows")
 

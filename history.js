@@ -40,7 +40,7 @@ function hDraw(){HS.charts.forEach(c=>c.destroy());HS.charts=[];const P=D.daily,
   if(!P||!P.dates.length){body.innerHTML='<div class="fc-msg">No daily history yet.</div>';$("#hChips").innerHTML="";return}
   document.querySelectorAll("#hMode button").forEach(b=>b.classList.toggle("on",b.dataset.v===HS.mode));
   const net=HS.mode==="net",cap=net?60:15,unit=net?"%":" pp",fmt=v=>v==null?"–":(v>0?"+":"")+v.toFixed(1);
-  if(HS.focus){$("#hChips").innerHTML=`<button class="fc-back" id="hBack">← Back to scoreboard</button><span class="fc-focus">${HS.focus}${pos(HS.focus)} · ${net?"inferred net premium":"calls − puts (contracts)"} per day</span>`;
+  if(HS.focus){$("#hChips").innerHTML=`<button class="fc-back" id="hBack">← Back to scoreboard</button><span class="fc-focus">${HS.focus}${pos(HS.focus)}${er(HS.focus)} · ${net?"inferred net premium":"calls − puts (contracts)"} per day</span>`;
     $("#hBack").onclick=()=>{HS.focus=null;hDraw()};
     body.innerHTML=`<div class="h-big"><div class="h-cv"><canvas></canvas></div></div>`;hChart(body.querySelector("canvas"),HS.focus,true)}
   else{const tks=WATCH.filter(t=>tick(t));
@@ -53,8 +53,8 @@ function hDraw(){HS.charts.forEach(c=>c.destroy());HS.charts=[];const P=D.daily,
     $("#hChips").innerHTML=`<span class="fc-hint">${net?"Net ÷ total premium (inferred)":"Call share vs own 20-day average (volume-based, no side)"} <span class="hinfo" tabindex="0" data-tip="${info}">ⓘ</span> · sorted by score, most bullish on top · click a row for its 5-day chart</span>`;
     const hd=P.dates.map(d=>d===P.today?`<div class="sc-h live">Today<br><small>live</small></div>`:`<div class="sc-h">${new Date(d+"T12:00:00").toLocaleDateString("en-US",{weekday:"short"})}<br><small>${new Date(d+"T12:00:00").toLocaleDateString("en-US",{month:"numeric",day:"numeric"})}</small></div>`).join("");
     let h=`<div class="sc" style="grid-template-columns:84px repeat(${P.dates.length},minmax(46px,1fr)) minmax(170px,1.6fr)"><div class="sc-h"></div>${hd}<div class="sc-h">Score <small>(avg of ${P.dates.length} cols)</small> <span class="hinfo" tabindex="0" data-tip="Average of the row's values across the columns shown (including today's live value). Arrow: ↗ the last 2 days are notably more bullish than the earlier days (≥${net?10:2}${unit.trim()}), ↘ notably more bearish.">ⓘ</span></div>`;
-    rows.forEach(r=>{h+=`<div class="sc-row" data-t="${r.t}"><div class="sc-tk">${r.t}${pos(r.t)}</div>`+
-      r.c.map(x=>`<div class="sc-cell ${x.live?"live":""} ${x.v==null?"nd":""}" style="${hCell(x.v,cap)}" title="${(x.live?"Today (live) · ":"")+x.tip}">${fmt(x.v)}</div>`).join("")+
+    rows.forEach(r=>{h+=`<div class="sc-row" data-t="${r.t}"><div class="sc-tk">${r.t}${pos(r.t)}${er(r.t).replace(/>📅 [^<]*</,">📅<")}</div>`+
+      r.c.map((x,i)=>{const ed=erDate(r.t).find(z=>z.date===P.dates[i]);return`<div class="sc-cell ${x.live?"live":""} ${x.v==null?"nd":""} ${ed?"er":""}" style="${hCell(x.v,cap)}" title="${(x.live?"Today (live) · ":"")+x.tip}${ed?` · Earnings date (${ed.e.timing||"timing n/a"}${ed.e.estimated===false?"":", unconfirmed"})`:""}">${fmt(x.v)}</div>`}).join("")+
       `<div class="sc-score"><span class="hm-bar"><i class="${(r.score||0)>=0?"up":"dn"}" style="${(r.score||0)>=0?"left:50%":"right:50%"};width:${r.score==null?0:Math.abs(r.score)/smax*50}%"></i></span><b class="${(r.score||0)>=0?"C":"P"}">${fmt(r.score)}${r.score==null?"":unit}</b><span class="tr ${r.trend>0?"C":r.trend<0?"P":""}" title="${r.trend>0?"Last 2 days more bullish than before":r.trend<0?"Last 2 days more bearish than before":""}">${r.trend>0?"↗":r.trend<0?"↘":""}</span></div></div>`});
     body.innerHTML=h+"</div>";
     body.querySelectorAll(".sc-row").forEach(e=>e.onclick=()=>{HS.focus=e.dataset.t;hDraw()})}

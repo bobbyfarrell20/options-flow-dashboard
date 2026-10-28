@@ -1,0 +1,218 @@
+{
+ "fetched": "2026-10-28",
+ "fetched_at": "2026-10-28T11:35:54-04:00",
+ "nasdaq_days_ok": 9,
+ "sources": {
+  "Yahoo": "Yahoo Finance quote data via yfinance (earningsTimestampStart, isEarningsDateEstimate, call time)",
+  "Nasdaq": "api.nasdaq.com earnings calendar (date + pre-market/after-hours)"
+ },
+ "tickers": {
+  "TSLA": {
+   "next": null,
+   "last": {
+    "date": "2026-10-21",
+    "timing": "AMC",
+    "estimated": false
+   },
+   "sources": [],
+   "conflict": null
+  },
+  "NVDA": {
+   "next": {
+    "date": "2026-11-17",
+    "timing": null,
+    "estimated": false,
+    "source": "Yahoo"
+   },
+   "last": null,
+   "sources": [
+    "Yahoo"
+   ],
+   "conflict": null
+  },
+  "PLTR": {
+   "next": {
+    "date": "2026-11-02",
+    "timing": "AMC",
+    "estimated": false,
+    "source": "Yahoo",
+    "timing_source": "Nasdaq"
+   },
+   "last": null,
+   "sources": [
+    "Yahoo",
+    "Nasdaq"
+   ],
+   "conflict": null
+  },
+  "MU": {
+   "next": {
+    "date": "2026-12-23",
+    "timing": null,
+    "estimated": true,
+    "source": "Yahoo"
+   },
+   "last": null,
+   "sources": [
+    "Yahoo"
+   ],
+   "conflict": null
+  },
+  "SKM": {
+   "next": {
+    "date": "2026-10-29",
+    "timing": null,
+    "estimated": null,
+    "source": "Nasdaq"
+   },
+   "last": null,
+   "sources": [
+    "Nasdaq"
+   ],
+   "conflict": "Yahoo estimate was 2026-11-04"
+  },
+  "TSM": {
+   "next": {
+    "date": "2027-01-14",
+    "timing": null,
+    "estimated": true,
+    "source": "Yahoo"
+   },
+   "last": null,
+   "sources": [
+    "Yahoo"
+   ],
+   "conflict": null
+  },
+  "INTC": {
+   "next": {
+    "date": "2026-10-29",
+    "timing": "AMC",
+    "estimated": false,
+    "source": "Yahoo",
+    "timing_source": "Nasdaq"
+   },
+   "last": null,
+   "sources": [
+    "Yahoo",
+    "Nasdaq"
+   ],
+   "conflict": null
+  },
+  "MRVL": {
+   "next": {
+    "date": "2026-12-01",
+    "timing": null,
+    "estimated": true,
+    "source": "Yahoo"
+   },
+   "last": null,
+   "sources": [
+    "Yahoo"
+   ],
+   "conflict": null
+  },
+  "BE": {
+   "next": null,
+   "last": {
+    "date": "2026-10-22",
+    "timing": "AMC",
+    "estimated": false
+   },
+   "sources": [],
+   "conflict": null
+  },
+  "MSTR": {
+   "next": {
+    "date": "2026-10-29",
+    "timing": "AMC",
+    "estimated": false,
+    "source": "Yahoo",
+    "timing_source": "Nasdaq"
+   },
+   "last": null,
+   "sources": [
+    "Yahoo",
+    "Nasdaq"
+   ],
+   "conflict": null
+  },
+  "ASST": {
+   "next": {
+    "date": "2026-11-10",
+    "timing": null,
+    "estimated": true,
+    "source": "Yahoo"
+   },
+   "last": null,
+   "sources": [
+    "Yahoo"
+   ],
+   "conflict": null
+  },
+  "SPCX": {
+   "next": null,
+   "last": {
+    "date": "2026-10-20",
+    "timing": "AMC",
+    "estimated": false
+   },
+   "sources": [],
+   "conflict": null
+  },
+  "ECHO": {
+   "next": {
+    "date": "2026-11-05",
+    "timing": null,
+    "estimated": true,
+    "source": "Yahoo"
+   },
+   "last": null,
+   "sources": [
+    "Yahoo"
+   ],
+   "conflict": null
+  },
+  "TE": {
+   "next": {
+    "date": "2026-11-12",
+    "timing": "BMO",
+    "estimated": false,
+    "source": "Yahoo",
+    "timing_source": "Yahoo (call time)"
+   },
+   "last": null,
+   "sources": [
+    "Yahoo"
+   ],
+   "conflict": null
+  },
+  "VST": {
+   "next": {
+    "date": "2026-11-06",
+    "timing": null,
+    "estimated": false,
+    "source": "Yahoo"
+   },
+   "last": null,
+   "sources": [
+    "Yahoo"
+   ],
+   "conflict": null
+  },
+  "LYFT": {
+   "next": {
+    "date": "2026-11-05",
+    "timing": "AMC",
+    "estimated": false,
+    "source": "Yahoo",
+    "timing_source": "Yahoo (call time)"
+   },
+   "last": null,
+   "sources": [
+    "Yahoo"
+   ],
+   "conflict": null
+  }
+ }
+}

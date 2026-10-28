@@ -21,9 +21,10 @@ async function load(){
   try{if(typeof chartLoad==="function")await chartLoad();if(typeof hDraw==="function")hDraw()}catch(e){console.error(e)}
   return true;
 }
+function erNote(){const l=WATCH.map(t=>[t,erInfo(t)]).filter(x=>x[1]);return ` 📅 = earnings within 7 days or reported in the last day (bright = within 2 days; dashed = date estimated/unconfirmed; hover for source). ${l.length?"Now: "+l.map(([t,x])=>t+" "+x.label).join(", ")+".":"None in the next 7 days."}`}
 function volNote(){const m=D.volume_meta;if(!m)return"";const ok=D.tickers.filter(t=>t.vol_vs_avg&&t.vol_vs_avg.baseline_days>=m.min_days).length;
   const fl=D.tickers.filter(t=>t.vol_vs_avg&&t.vol_vs_avg.flag).map(t=>t.ticker);
-  return ok?` 🔥 = options volume ≥1.5x (strong ≥3x) its ${m.lookback}-session average daily options volume from OCC (pace-adjusted intraday; hover a badge for details). Flagged: ${fl.join(", ")||"none"}.`:" 🔥 Unusual-volume badges: baseline building (need "+m.min_days+" sessions of OCC history).";}
+  return ok?` 🔥 = options volume ≥1.5x (strong ≥3x) its ${m.lookback}-session average daily options volume from OCC (pace-adjusted intraday; hover a badge for details). Flagged: ${fl.join(", ")||"none"}.${erNote()}`:" 🔥 Unusual-volume badges: baseline building (need "+m.min_days+" sessions of OCC history).";}
 function board(){
   const b=D.sentiment_board;if(!b){$("#sentboard").style.display="none";return}
   const tot=b.bull_total+b.bear_total,bp=tot?b.bull_total/tot*100:50;
@@ -54,13 +55,31 @@ function board(){
 function tick(t){return D.tickers.find(x=>x.ticker===t)}
 const POSITIONS=new Set(["LYFT"]); // tickers Bobby holds a position in (marker only, no details)
 function pos(t){return POSITIONS.has(t)?'<span class="postag" title="You hold a position in this ticker">POS</span>':""}
-function vb(t){return pos(t)+vb0(t)}
+function vb(t,full){return pos(t)+er(t,!full)+vb0(t)}
+// ---------- earnings (data/earnings.json via flow.json "earnings"; refreshed daily; unknown -> no badge) ----------
+const etToday=()=>new Date().toLocaleDateString("en-CA",{timeZone:"America/New_York"});
+const dayDiff=(a,b)=>Math.round((Date.parse(b+"T12:00:00Z")-Date.parse(a+"T12:00:00Z"))/864e5);
+const md=d=>d?`${+d.slice(5,7)}/${+d.slice(8,10)}`:"";
+function erInfo(t){const E=D&&D.earnings&&D.earnings.tickers&&D.earnings.tickers[t];if(!E)return null;const today=etToday();
+  const src=e=>e.source||(E.sources||[]).join(" + ")||"Yahoo";
+  const status=e=>e.estimated===true?"estimated (not confirmed)":e.estimated===false?"confirmed":"listed on calendar, not confirmed";
+  const base=e=>`Earnings ${e.date}${e.timing?" "+(e.timing==="BMO"?"before market open (BMO)":"after market close (AMC)"):" (timing not published)"} · ${status(e)} · source: ${src(e)}${(E.sources||[]).length>1?" (dates agree)":""}${E.conflict?" · note: "+E.conflict:""}`;
+  if(E.next){const d=dayDiff(today,E.next.date);
+    if(d===0&&E.next.timing==="BMO")return{kind:"rep",d:0,e:E.next,date:E.next.date,label:`Reported today BMO`,tip:base(E.next)};
+    if(d>=0&&d<=7)return{kind:"next",d,e:E.next,date:E.next.date,label:`ER ${d===0?"today":d===1?"tmrw":md(E.next.date)}${E.next.timing?" "+E.next.timing:""}${E.next.estimated===false?"":" est."}`,tip:base(E.next)+` · in ${d} day${d===1?"":"s"}`}}
+  if(E.last){const d=dayDiff(E.last.date,today);if(d>=0&&d<=1)return{kind:"rep",d,e:E.last,date:E.last.date,label:`Reported ${d?"yesterday":"today"}${E.last.timing?" "+E.last.timing:""}`,tip:base(E.last)}}
+  return null}
+function er(t,compact){const x=erInfo(t);if(!x)return"";const cls=x.kind==="rep"?"rep":x.d<=2?"hot":"";
+  const lab=compact?(x.kind==="rep"?"ER "+(x.d?"1d ago":"today"):x.d===0?"ER today":"ER in "+x.d+"d"):x.label;
+  return ` <span class="ertag ${cls} ${x.e.estimated===false?"":"est"}" title="${x.tip}">📅 ${lab}</span>`}
+function erDate(t){const E=D&&D.earnings&&D.earnings.tickers&&D.earnings.tickers[t];return E?[E.next,E.last].filter(Boolean).map(e=>({date:e.date,e})):[]}
 function vb0(t){const x=tick(t),v=x&&x.vol_vs_avg;if(!v||!v.flag)return"";
   const tip=`Options volume ${n(v.today)} contracts (all expirations, session ${v.session_date}) vs ${v.baseline_days}-session avg ${n(v.baseline)} (OCC). Raw ratio ${v.ratio}x`+(v.basis==="pace"?`; pace ratio ${v.pace_ratio}x = raw ÷ ${(v.session_fraction*100).toFixed(0)}% of session elapsed (assumes even volume through the day; early-session pace overstates).`:v.basis==="full session"?" (full session).":` (${v.basis}).`)+` Badge at ≥1.5x, strong at ≥3x.`;
-  return ` <span class="vb ${v.flag}" title="${tip}">🔥${v.flag_ratio.toFixed(1)}x</span>`}
+  const ex=erInfo(t);const tip2=ex&&ex.kind==="next"?tip+" · Earnings within 7 days ("+ex.date+(ex.e.timing?" "+ex.e.timing:"")+") — elevated volume may be earnings-related.":ex&&ex.kind==="rep"?tip+" · Earnings reported "+(ex.d?"yesterday":"today")+" — elevated volume is likely earnings-related.":tip;
+  return ` <span class="vb ${v.flag}" title="${tip2}">🔥${v.flag_ratio.toFixed(1)}x</span>`}
 function chips(){
   const c=$("#chips");c.innerHTML=`<button class="chip ${st.tk.size?"":"on"}" data-t="ALL">All watchlist</button>`+WATCH.map(t=>{const x=tick(t);const ch=x&&x.change_pct!=null?x.change_pct:null;
-    return `<button class="chip ${st.tk.has(t)?"on":""} ${x&&x.status==="ok"?"":"bad"}" data-t="${t}" title="${x?(x.name||x.message||""):""}">${t}${vb(t)}${ch!=null?`<span class="d ${ch>=0?"C":"P"}">${ch>=0?"+":""}${ch.toFixed(1)}%</span>`:""}</button>`}).join("");
+    return `<button class="chip ${st.tk.has(t)?"on":""} ${x&&x.status==="ok"?"":"bad"}" data-t="${t}" title="${x?(x.name||x.message||""):""}">${t}${vb(t,1)}${ch!=null?`<span class="d ${ch>=0?"C":"P"}">${ch>=0?"+":""}${ch.toFixed(1)}%</span>`:""}</button>`}).join("");
   c.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{const t=b.dataset.t;if(t==="ALL")st.tk.clear();else st.tk.has(t)?st.tk.delete(t):st.tk.add(t);chips();board();render();detail(t==="ALL"?null:t)});
 }
 function leaders(){
@@ -71,7 +90,7 @@ function leaders(){
 function overview(){
   $("#overview").innerHTML=`<tr><th>Tkr</th><th>Spot</th><th>P/C vol</th><th>Call $</th><th>Put $</th><th>Max pain</th></tr>`+WATCH.map(t=>{const x=tick(t);
     if(!x||x.status!=="ok")return `<tr data-t="${t}"><td><b>${t}</b></td><td colspan="5" class="muted">${x?(x.message||"no options data"):"no data"}</td></tr>`;
-    return `<tr data-t="${t}"><td><b>${t}</b>${vb(t)}${x.name_ok?"":' <span class="warn">⚠</span>'}</td><td>${x.spot}</td><td class="${x.pc_vol>1?"P":"C"}">${x.pc_vol??"–"}</td><td>${money(x.call_premium)}</td><td>${money(x.put_premium)}</td><td>${x.max_pain??"–"}</td></tr>`}).join("");
+    return `<tr data-t="${t}"><td><b>${t}</b>${vb(t,1)}${x.name_ok?"":' <span class="warn">⚠</span>'}</td><td>${x.spot}</td><td class="${x.pc_vol>1?"P":"C"}">${x.pc_vol??"–"}</td><td>${money(x.call_premium)}</td><td>${money(x.put_premium)}</td><td>${x.max_pain??"–"}</td></tr>`}).join("");
   $("#overview").querySelectorAll("tr[data-t]").forEach(e=>e.onclick=()=>pick(e.dataset.t));
 }
 function pick(t){st.tk=new Set([t]);chips();board();render();detail(t)}

@@ -39,7 +39,7 @@ jobs:
         run: |
           git config user.name "farrell-flow-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/flow.json data/sides.json data/volume_history.json data/daily_history.json data/timeseries
+          git add data/flow.json data/sides.json data/volume_history.json data/daily_history.json data/earnings.json data/timeseries
           if git diff --cached --quiet; then echo "no change"; exit 0; fi
           git commit -m "data: refresh $(TZ=America/New_York date '+%Y-%m-%d %H:%M ET')"
           git pull --rebase origin main && git push

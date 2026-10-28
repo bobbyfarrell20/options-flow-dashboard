@@ -29,7 +29,7 @@ function controls(per){
   const tks=WATCH.filter(t=>per[t]);const latest=tks.map(t=>[t,per[t][per[t].length-1].net]).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]));
   if(!CH.userSel||!CH.sel)CH.sel=new Set(latest.slice(0,5).map(x=>x[0]));
   let h="";
-  if(CH.focus)h=`<button class="fc-back" id="fcBack">← Back to ${CH.view==="lines"?"lines":"heatmap"}</button><span class="fc-focus">${CH.focus} only${pos(CH.focus)}</span>`;
+  if(CH.focus)h=`<button class="fc-back" id="fcBack">← Back to ${CH.view==="lines"?"lines":"heatmap"}</button><span class="fc-focus">${CH.focus} only${pos(CH.focus)}${er(CH.focus)}</span>`;
   else if(CH.view==="lines")h=`<button class="fchip ${CH.userSel?"":"on"}" data-t="TOP">Top 5 movers</button><button class="fchip" data-t="ALL">All</button>`+
      tks.map(t=>`<button class="fchip ${CH.sel.has(t)?"on":""}" data-t="${t}" title="Click to toggle · double-click to focus"><i style="background:${colorOf(t)}"></i>${t}</button>`).join("");
   else h=`<span class="fc-hint">Rows sorted by today's net (most bullish on top) · each cell = net premium that came in during that interval · click a row for its line chart</span>`;
@@ -76,7 +76,7 @@ function drawHeat(){
   let h=`<div class="hm" style="grid-template-columns:76px repeat(${N},minmax(5px,1fr)) 150px">`;
   h+=`<div class="hm-h"></div>`+labs.map(l=>`<div class="hm-h hm-t">${l}</div>`).join("")+`<div class="hm-h hm-c">Day cumulative</div>`;
   rows.forEach(r=>{const mx=CH.scale==="row"?Math.max(1,...r.cells.map(q=>q&&!q.cu?Math.abs(q.d):0)):shared;
-    h+=`<div class="hm-row" data-t="${r.t}"><div class="hm-tk">${r.t}${pos(r.t)}</div>`;
+    h+=`<div class="hm-row" data-t="${r.t}"><div class="hm-tk">${r.t}${pos(r.t)}${typeof er==="function"?er(r.t).replace(/>📅 [^<]*</,">📅<"):""}</div>`;
     r.cells.forEach((q,i)=>{if(q&&q.cu){h+=`<div class="hm-cell cu" data-i="${i}"></div>`;return}const c=heatColor(q?q.d:null,mx),f=q?Math.abs(q.d)/mx:0;
       h+=`<div class="hm-cell ${q?"":"nd"}" data-i="${i}" style="${c?`background:${c}`:""}">${q&&showVal&&f>=.04?`<span>${sgn(q.d)}</span>`:q&&showSign&&f>=.35&&Math.abs(q.d)>=5e3?`<span>${q.d>0?"+":"−"}</span>`:""}</div>`});
     const w=r.cum==null?0:Math.abs(r.cum)/cmax*50;
@@ -98,7 +98,12 @@ function drawFocus(per,B){const t=CH.focus,a=per[t],[lo,hi]=getWin();
       fill:{target:{value:0},above:"rgba(34,197,94,.28)",below:"rgba(239,68,68,.28)"}},
     {type:"bar",label:"Interval net",data:a.map(q=>({x:q.x,y:q.d,q})),yAxisID:"y2",backgroundColor:a.map(q=>q.cu?"rgba(148,163,184,.45)":q.d>=0?"rgba(34,197,94,.85)":"rgba(239,68,68,.85)"),barThickness:"flex",maxBarThickness:22}];
   const grid=c=>c.tick.value===0?"#9aa3b5":"#1f2635";const nets=a.map(q=>q.net),pad=(Math.max(0,...nets)-Math.min(0,...nets))*.08||1;
-  CH.chart=new Chart($("#fcCanvas"),{data:{datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:false,parsing:false,
+  const ed=typeof erDate==="function"?erDate(t).find(z=>z.date===CH.series.date):null;
+  const erX=ed?(ed.e.timing==="BMO"?B.open:ed.e.timing==="AMC"?B.close:null):null;
+  const erPlug={id:"erLine",afterDatasetsDraw(c){if(erX==null)return;const x=c.scales.x.getPixelForValue(erX),A=c.chartArea;if(x<A.left-1||x>A.right+1)return;const g=c.ctx;g.save();
+    g.strokeStyle="rgba(167,139,250,.8)";g.setLineDash([4,3]);g.beginPath();g.moveTo(x,A.top);g.lineTo(x,A.bottom);g.stroke();g.setLineDash([]);g.fillStyle="#c4b5fd";g.font="bold 10px sans-serif";
+    g.textAlign=x>A.right-40?"right":"left";g.fillText(`📅 ER ${ed.e.timing}`,x+(x>A.right-40?-4:4),A.top+10);g.restore()}};
+  CH.chart=new Chart($("#fcCanvas"),{plugins:[erPlug],data:{datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:false,parsing:false,
     interaction:{mode:"nearest",axis:"x",intersect:false},
     scales:{x:{type:"linear",min:lo,max:hi,ticks:{color:"#8a93a6",maxRotation:0,callback:v=>etHM(v)},grid:{color:"#1f2635"}},
       y2:{stack:"f",stackWeight:1.3,offset:true,beginAtZero:true,ticks:{color:"#8a93a6",callback:sgn,maxTicksLimit:4},grid:{color:grid},title:{display:true,color:"#7c879c",text:"Per interval"}},
