@@ -14,25 +14,27 @@
   <div class="sb-cards two">
     <div class="sb-card net"><h2>Net flow <span class="net-total" id="netTotal"></span></h2><table class="sb netsb"><thead><tr><th>TICKER</th><th class="c">NET PREMIUM</th><th class="r">NET ORDERS</th></tr></thead><tbody id="sbNet"></tbody></table></div>
     <div class="sb-card fc" id="flowChartCard">
-      <div class="fc-head"><h2>Net flow over time</h2>
+      <div class="fc-head"><h2>When the flow came in</h2>
         <div class="fc-ctl">
-          <span class="seg" id="fcMode"><button data-v="cum" class="on">Cumulative</button><button data-v="int">Per interval</button></span>
+          <span class="seg" id="fcMode" title="Heatmap (default) or multi-line chart"><button data-v="heat" class="on">Heatmap</button><button data-v="lines">Lines</button></span>
+          <span class="seg" id="fcScale" title="Heatmap color intensity"><button data-v="row" class="on" title="Each row scaled to its own biggest interval: best for seeing WHEN each ticker's flow came in">Per-ticker</button><button data-v="shared" title="One scale for all rows: best for comparing SIZE across tickers">Shared</button></span>
           <label class="chk" id="fcNormWrap" title="Multi-ticker view: cumulative = net as % of that ticker's directional premium; per interval = scaled to each ticker's own largest move"><input type="checkbox" id="fcNorm"> Normalize</label>
           <span class="seg" id="fcPresets"><button data-v="30">30m</button><button data-v="60">1h</button><button data-v="120">2h</button><button data-v="full">Full session</button><button data-v="auto">Fit</button></span>
           <span class="fc-date"><button id="fcPrev" title="Previous stored session">◀</button><span id="fcDate">–</span><button id="fcNext" title="Next session">▶</button></span>
         </div></div>
       <div class="fc-chips" id="fcChips"></div>
       <div class="fc-msg" id="fcMsg" style="display:none"></div>
+      <div class="fc-heat" id="fcHeat"></div>
       <div class="fc-canvas" id="fcCanvasWrap"><canvas id="fcCanvas"></canvas></div>
       <div class="fc-brush" id="fcBrush" title="Drag the window to pan, drag its edges to resize, or drag elsewhere to select a range"><div class="data"></div><div class="win"><span data-h="l"></span><span data-h="r"></span></div><div class="lab"><span>9:30</span><span>12:00</span><span>4:00 PM</span></div></div>
-      <div class="fc-foot"><span id="fcInfo"></span> · Each point is a delayed (~15 min) snapshot of the session's cumulative inferred flow; side is inferred, and earlier trades can be re-classified as quotes move. Wheel/pinch to zoom, drag to pan. Dots = flips (net crossed zero).</div>
+      <div class="fc-foot"><span id="fcInfo"></span> · Each column/point is a delayed (~15 min) snapshot; interval = change in the session's cumulative inferred net since the prior snapshot. Side is inferred and earlier trades can be re-classified as quotes move, so an interval can reflect re-classification, not only new trades. Slider and presets set the time window; on charts wheel/pinch zooms. Dots = flips (net crossed zero).</div>
     </div>
   </div>
   <div class="sb-note" id="sbNote">Orders = contracts traded in the latest session with an inferred side (calls near ask / puts near bid = bullish; puts near ask / calls near bid = bearish). Inferred from delayed public chain data; not confirmed sweeps or blocks. Mid-priced trades are excluded. Click a row to focus it in the chart and filter the flow table.</div>
 </section>
 <section class="hist card" id="histCard">
   <div class="fc-head"><h2>Last 5 days</h2>
-    <div class="fc-ctl"><span class="seg" id="hMode"><button data-v="net" class="on">Net premium (inferred)</button><button data-v="cp">Call vs put volume</button></span></div></div>
+    <div class="fc-ctl"><span class="seg" id="hMode"><button data-v="cp" class="on">Call share vs 20d avg</button><button data-v="net">Net ÷ premium (inferred)</button></span></div></div>
   <div class="fc-chips" id="hChips"></div>
   <div id="hBody"></div>
   <div class="fc-foot" id="hNote"></div>
@@ -75,4 +77,5 @@
 <script src="app.js"></script>
 <script src="chart.js"></script>
 <script src="history.js"></script>
+<div id="fcTip" class="fc-tip"></div>
 </body></html>

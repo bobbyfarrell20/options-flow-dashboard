@@ -27,19 +27,38 @@ function hChart(el,t,big){const S=hSeries(t);if(!S)return;let cum=0;const cl=S.m
             :[`Calls ${n(s.c)} · Puts ${n(s.p)} · P/C ${s.c?(s.p/s.c).toFixed(2):"–"}`,`Call − put ${fmt(s.v)}`,s.src]}}}},
     onClick:()=>{if(!big){HS.focus=t;hDraw()}}}});
   HS.charts.push(ch);return S}
+// ---------- scoreboard heatmap (comparable across tickers) ----------
+function hNorm(t){const P=D.daily;return P.dates.map(d=>{const live=d===P.today;
+  if(HS.mode==="net"){const r=(P.inferred[d]||{}).t?.[t];const tot=r?(r.bull+r.bear):0;
+    return{d,live,v:r&&tot?r.net/tot*100:null,tip:r&&tot?`Net ${sgn(r.net)} of $${money(tot)} directional premium (bull $${money(r.bull)} / bear $${money(r.bear)})`:"No inferred-side data for this day"}}
+  let c=null,p=null,src;if(live){const x=tick(t);if(x&&x.call_vol!=null){c=x.call_vol;p=x.put_vol;src="Yahoo session volume so far (live, partial)"}}
+  else{const o=(P.occ_cp[d]||{})[t];if(o){[c,p]=o;src="OCC cleared volume"}}
+  const b=((P.cs_base||{})[d]||{})[t];if(c==null||!(c+p)||!b)return{d,live,v:null,tip:c==null?"No volume data":"Not enough history for a 20-day baseline"};
+  const sh=c/(c+p);return{d,live,v:(sh-b.share)*100,tip:`Call share ${(sh*100).toFixed(1)}% vs 20-day avg ${(b.share*100).toFixed(1)}% (${b.days} sessions)\nCalls ${n(c)} · Puts ${n(p)} · ${src}`}})}
+function hCell(v,cap){if(v==null)return"";const a=(.15+.8*Math.sqrt(Math.min(1,Math.abs(v)/cap))).toFixed(2);return`background:${v>=0?`rgba(34,197,94,${a})`:`rgba(239,68,68,${a})`}`}
 function hDraw(){HS.charts.forEach(c=>c.destroy());HS.charts=[];const P=D.daily,body=$("#hBody");
   if(!P||!P.dates.length){body.innerHTML='<div class="fc-msg">No daily history yet.</div>';$("#hChips").innerHTML="";return}
   document.querySelectorAll("#hMode button").forEach(b=>b.classList.toggle("on",b.dataset.v===HS.mode));
-  const tks=WATCH.filter(t=>tick(t));
-  $("#hChips").innerHTML=(HS.focus?`<button class="fc-back" id="hBack">← Back to all</button>`:`<button class="fchip on">Small multiples</button>`)+
-    tks.map(t=>`<button class="fchip ${HS.focus===t?"on":""}" data-t="${t}">${t}</button>`).join("");
-  $("#hChips").querySelectorAll(".fchip[data-t]").forEach(b=>b.onclick=()=>{HS.focus=b.dataset.t;hDraw()});
-  const bk=$("#hBack");if(bk)bk.onclick=()=>{HS.focus=null;hDraw()};
-  if(HS.focus){body.innerHTML=`<div class="h-big"><div class="h-title">${HS.focus}${pos(HS.focus)}</div><div class="h-cv"><canvas></canvas></div></div>`;hChart(body.querySelector("canvas"),HS.focus,true)}
-  else{body.innerHTML=`<div class="h-grid">${tks.map(t=>`<div class="h-mini" data-t="${t}"><div class="h-title">${t}${pos(t)}<span class="h-v"></span></div><div class="h-cv"><canvas></canvas></div></div>`).join("")}</div>`;
-    body.querySelectorAll(".h-mini").forEach(m=>{const S=hChart(m.querySelector("canvas"),m.dataset.t,false);const tot=S.reduce((a,s)=>a+(s.v||0),0),has=S.some(s=>s.v!=null);
-      m.querySelector(".h-v").innerHTML=has?`<b class="${tot>=0?"C":"P"}">${HS.mode==="net"?sgn(tot):(tot>0?"+":"")+n(tot)}</b>`:"–";m.onclick=()=>{HS.focus=m.dataset.t;hDraw()}})}
+  const net=HS.mode==="net",cap=net?60:15,unit=net?"%":" pp",fmt=v=>v==null?"–":(v>0?"+":"")+v.toFixed(1);
+  if(HS.focus){$("#hChips").innerHTML=`<button class="fc-back" id="hBack">← Back to scoreboard</button><span class="fc-focus">${HS.focus}${pos(HS.focus)} · ${net?"inferred net premium":"calls − puts (contracts)"} per day</span>`;
+    $("#hBack").onclick=()=>{HS.focus=null;hDraw()};
+    body.innerHTML=`<div class="h-big"><div class="h-cv"><canvas></canvas></div></div>`;hChart(body.querySelector("canvas"),HS.focus,true)}
+  else{const tks=WATCH.filter(t=>tick(t));
+    const rows=tks.map(t=>{const c=hNorm(t),vals=c.filter(x=>x.v!=null).map(x=>x.v);const score=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
+      let trend=0;if(vals.length>=3){const l2=(vals.at(-1)+vals.at(-2))/2,pr=vals.slice(0,-2);const base=pr.reduce((a,b)=>a+b,0)/pr.length;const th=net?10:2;trend=l2-base>=th?1:l2-base<=-th?-1:0}
+      return{t,c,score,n:vals.length,trend}}).sort((a,b)=>(b.score??-1e9)-(a.score??-1e9));
+    const smax=Math.max(1e-9,...rows.map(r=>Math.abs(r.score||0)));
+    const info=net?"Inferred net premium ÷ total directional premium (bullish + bearish) for each day: +100% = all bullish, −100% = all bearish. Comparable across tickers of any size. Side is inferred from delayed quotes; only exists from Oct 28 onward."
+      :"Call share of options volume (calls ÷ (calls + puts)) minus that ticker's own 20-session average call share, in percentage points. +5 pp = 5 points more call-heavy than usual for that name. Completed days: OCC cleared volume; Today: Yahoo session volume so far. Volume-based: no side (a call can be bought or sold).";
+    $("#hChips").innerHTML=`<span class="fc-hint">${net?"Net ÷ total premium (inferred)":"Call share vs own 20-day average (volume-based, no side)"} <span class="hinfo" tabindex="0" data-tip="${info}">ⓘ</span> · sorted by score, most bullish on top · click a row for its 5-day chart</span>`;
+    const hd=P.dates.map(d=>d===P.today?`<div class="sc-h live">Today<br><small>live</small></div>`:`<div class="sc-h">${new Date(d+"T12:00:00").toLocaleDateString("en-US",{weekday:"short"})}<br><small>${new Date(d+"T12:00:00").toLocaleDateString("en-US",{month:"numeric",day:"numeric"})}</small></div>`).join("");
+    let h=`<div class="sc" style="grid-template-columns:84px repeat(${P.dates.length},minmax(46px,1fr)) minmax(170px,1.6fr)"><div class="sc-h"></div>${hd}<div class="sc-h">Score <small>(avg of ${P.dates.length} cols)</small> <span class="hinfo" tabindex="0" data-tip="Average of the row's values across the columns shown (including today's live value). Arrow: ↗ the last 2 days are notably more bullish than the earlier days (≥${net?10:2}${unit.trim()}), ↘ notably more bearish.">ⓘ</span></div>`;
+    rows.forEach(r=>{h+=`<div class="sc-row" data-t="${r.t}"><div class="sc-tk">${r.t}${pos(r.t)}</div>`+
+      r.c.map(x=>`<div class="sc-cell ${x.live?"live":""} ${x.v==null?"nd":""}" style="${hCell(x.v,cap)}" title="${(x.live?"Today (live) · ":"")+x.tip}">${fmt(x.v)}</div>`).join("")+
+      `<div class="sc-score"><span class="hm-bar"><i class="${(r.score||0)>=0?"up":"dn"}" style="${(r.score||0)>=0?"left:50%":"right:50%"};width:${r.score==null?0:Math.abs(r.score)/smax*50}%"></i></span><b class="${(r.score||0)>=0?"C":"P"}">${fmt(r.score)}${r.score==null?"":unit}</b><span class="tr ${r.trend>0?"C":r.trend<0?"P":""}" title="${r.trend>0?"Last 2 days more bullish than before":r.trend<0?"Last 2 days more bearish than before":""}">${r.trend>0?"↗":r.trend<0?"↘":""}</span></div></div>`});
+    body.innerHTML=h+"</div>";
+    body.querySelectorAll(".sc-row").forEach(e=>e.onclick=()=>{HS.focus=e.dataset.t;hDraw()})}
   const inf=P.dates.filter(d=>P.inferred[d]),occ=P.dates.filter(d=>P.occ_cp[d]);
-  $("#hNote").innerHTML=HS.mode==="net"?`<b>Inferred net premium</b> (bullish − bearish, side inferred from delayed snapshots) exists only from Oct 28 onward: ${inf.length} of ${P.dates.length} days have it; earlier days are blank, not estimated. Switch to “Call vs put volume” for the volume-based history.${P.today?" Hatched bar = today, live and updating.":""} Yellow line = cumulative across the bars shown.`
-    :`<b>Volume-based (no side)</b>: calls − puts in contracts. Completed days are OCC cleared volume (${occ.length} days); ${P.today?"today's hatched bar is Yahoo's session volume so far (live, partial, ~15 min delayed). ":""}Shows call/put skew, not whether trades were bought or sold. Yellow line = cumulative across the bars shown.`}
+  $("#hNote").innerHTML=net?`<b>Inferred net premium</b> exists only from Oct 28 onward (${inf.length} of ${P.dates.length} days); earlier cells are blank (–), not estimated. Today is live and updates each snapshot.`
+    :`<b>Volume-based (no side)</b>. Completed days: OCC cleared volume (${occ.length} days); ${P.today?"Today (outlined): Yahoo session volume so far, live and partial (~15 min delayed); ":""}baseline = each ticker's own volume-weighted call share over the 20 OCC sessions before that day. Shows call/put skew vs normal, not whether trades were bought or sold. Numbers are in every cell so color isn't the only cue.`}
 document.querySelectorAll("#hMode button").forEach(b=>b.onclick=()=>{HS.mode=b.dataset.v;hDraw()});

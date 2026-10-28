@@ -28,6 +28,15 @@ def update(data, now):
     json.dump(h, open(PATH, "w"), separators=(",", ":"), sort_keys=True)
     return h
 
+def cs_base(cp, day, n=20, min_days=10):
+    """Volume-weighted call share (calls / (calls+puts)) over the n OCC sessions before `day`, per ticker."""
+    prior = sorted(k for k in cp if k < day)[-n:]; out = {}
+    for s in {s for k in prior for s in cp[k]}:
+        rows = [cp[k][s] for k in prior if s in cp[k] and sum(cp[k][s]) > 0]
+        tot = sum(c + p for c, p in rows)
+        if len(rows) >= min_days and tot: out[s] = {"share": round(sum(c for c, _ in rows) / tot, 4), "days": len(rows)}
+    return out
+
 def payload(h, vol_hist, today, sessions=5):
     """The `sessions` prior completed sessions, plus today (live) once today's in-session data exists."""
     cp = vol_hist.get("cp", {}); today = today.isoformat()
@@ -36,5 +45,6 @@ def payload(h, vol_hist, today, sessions=5):
     return {"dates": dates, "today": today if today in h["days"] else None,
             "inferred": {d: h["days"][d] for d in dates if d in h["days"]},
             "occ_cp": {d: cp[d] for d in dates if d in cp},
+            "cs_base": {d: cs_base(cp, d) for d in dates},
             "notes": {"inferred": "Inferred net premium from live delayed snapshots (side inferred from last vs bid/ask); available from 2026-10-28.",
                       "occ_cp": "OCC cleared contract volume, calls vs puts, completed sessions only. No side, no premium."}}

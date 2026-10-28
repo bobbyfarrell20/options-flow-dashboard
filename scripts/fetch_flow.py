@@ -283,7 +283,7 @@ def main():
                   open(f"{ts.DIR}/index.json", "w"))
     except Exception as ex: print("timeseries index failed:", ex)
     try:
-        hist = vb.update_cp(hist, [s for s, _ in WATCHLIST], now.date()); vb.save(hist)
+        hist = vb.update_cp(hist, [s for s, _ in WATCHLIST], now.date(), sessions=28); vb.save(hist)
     except Exception as ex: print("OCC call/put update failed:", ex)
     try: data["daily"] = daily.payload(daily.update(data, now), hist, now.date())
     except Exception as ex: print("daily history failed:", ex)
