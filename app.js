@@ -52,7 +52,7 @@ function board(){
 }
 function tick(t){return D.tickers.find(x=>x.ticker===t)}
 const POSITIONS=new Set(["LYFT"]); // tickers Bobby holds a position in (marker only, no details)
-function pos(t){return POSITIONS.has(t)?'<span class="pos" title="You hold a position in this ticker">POS</span>':""}
+function pos(t){return POSITIONS.has(t)?'<span class="postag" title="You hold a position in this ticker">POS</span>':""}
 function vb(t){return pos(t)+vb0(t)}
 function vb0(t){const x=tick(t),v=x&&x.vol_vs_avg;if(!v||!v.flag)return"";
   const tip=`Options volume ${n(v.today)} contracts (all expirations, session ${v.session_date}) vs ${v.baseline_days}-session avg ${n(v.baseline)} (OCC). Raw ratio ${v.ratio}x`+(v.basis==="pace"?`; pace ratio ${v.pace_ratio}x = raw ÷ ${(v.session_fraction*100).toFixed(0)}% of session elapsed (assumes even volume through the day; early-session pace overstates).`:v.basis==="full session"?" (full session).":` (${v.basis}).`)+` Badge at ≥1.5x, strong at ≥3x.`;

@@ -92,7 +92,7 @@ table.netsb thead th:nth-child(1){width:30%}table.netsb thead th:nth-child(2){wi
 .refresh .ic{display:inline-block}.refresh.spin .ic{animation:rot .8s linear infinite}
 @keyframes rot{to{transform:rotate(360deg)}}
 @media(max-width:900px){.sb-cards{grid-template-columns:1fr}.sb-card.net{order:-1}}
-.pos{display:inline-block;margin-left:4px;padding:0 4px;font-size:9px;font-weight:700;letter-spacing:.04em;line-height:14px;border:1px solid #6c8cff;color:#9fb3ff;border-radius:3px;vertical-align:middle}
+.postag{display:inline-block;margin-left:4px;padding:0 4px;font-size:9px;font-weight:700;letter-spacing:.04em;line-height:14px;border:1px solid #6c8cff;color:#9fb3ff;border-radius:3px;vertical-align:middle}
 
 /* trade table: whole-row sentiment shading, brighter = more premium + nearer expiry */
 .flow td.cpx,.flow td.sidex{font-weight:700;color:inherit}
