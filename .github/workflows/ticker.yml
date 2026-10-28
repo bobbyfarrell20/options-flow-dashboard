@@ -36,7 +36,11 @@ jobs:
               echo "$(TZ=America/New_York date '+%H:%M:%S ET') dispatch refresh.yml"
               gh workflow run refresh.yml --ref main || echo "dispatch failed (will retry next slot)"
             elif ! before_open; then
-              echo "Session window over; done."; exit 0
+              # one post-close refresh (~16:30 ET) so the session's FINAL side totals are saved to data/daily_history.json
+              # (daily.py marks rows final at >=16:15 ET); the 18:33 ET cron in refresh.yml is a backup if GitHub fires it.
+              echo "$(TZ=America/New_York date '+%H:%M:%S ET') session window over; dispatching post-close final refresh."
+              gh workflow run refresh.yml --ref main || echo "post-close dispatch failed"
+              exit 0
             fi
             # sleep to the next 10-minute boundary (+20s)
             now=$(date +%s); sleep $(( 600 - now % 600 + 20 ))

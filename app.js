@@ -52,7 +52,7 @@ function board(){
   if(na.length)extra+=` No side data for ${na.join(", ")} (no trades yet in the current session, or quotes outside session hours).`;
   $("#sbNote").dataset.base=$("#sbNote").dataset.base||$("#sbNote").textContent;$("#sbNote").textContent=$("#sbNote").dataset.base+extra+volNote();
   const cf=WATCH.filter(t=>{const s=dirSig(t);return s&&s.conflict});
-  if(cf.length)$("#sbNote").textContent+=` ⚠ = this ticker's call/put volume mix (5-day scoreboard, default view) points the other way from its buy/sell flow here (hover for numbers). Now: ${cf.join(", ")}.`;
+  if(cf.length)$("#sbNote").textContent+=` ⚠ = this ticker's call/put volume mix (vs its 20-day normal) points the other way from its buy/sell flow here (hover for numbers). Now: ${cf.join(", ")}.`;
 }
 function tick(t){return D.tickers.find(x=>x.ticker===t)}
 // Cross-check of the two "direction" signals for the current session, shared by the Net flow card and the 5-day scoreboard:
@@ -70,7 +70,7 @@ function dirConf(pp,np,net){const conflict=pp!=null&&np!=null&&pp!==0&&np!==0&&M
     :`Puts heavy (${f1(pp)} pp vs normal) but buy/sell flow is bullish (net ${sg(net)}, ${f1(np)}% of directional premium): puts mostly sold at the bid and/or calls bought at the ask.`;
   return{pp,np,net,conflict,minor,msg:msg&&(minor?"Minor conflict (one side is near zero). ":"")+msg}}
 function confMark(s){return s&&s.conflict?`<span class="cfl${s.minor?" minor":""}" title="${s.msg}">⚠</span>`:""}
-(()=>{const st=document.createElement("style");st.textContent=`.cfl{color:#fbbf24;font-weight:800;margin-left:3px;cursor:help;text-shadow:0 0 2px #000}.cfl.minor{opacity:.55}.sc-cell .cfl{font-size:10px;margin-left:2px}.h-cap{display:block;margin:2px 0 4px;color:#c9d3ea;font-size:12px}.h-cap b{color:#fff}`;document.head.appendChild(st)})();
+(()=>{const st=document.createElement("style");st.textContent=`.cfl{color:#fbbf24;font-weight:800;margin-left:3px;cursor:help;text-shadow:0 0 2px #000}.cfl.minor{opacity:.55}.sc-cell .cfl{font-size:10px;margin-left:2px}.h-cap{display:block;margin:2px 0 4px;color:#c9d3ea;font-size:12px}.h-cap b{color:#fff}.sc-cell.vol{color:#aab3c5;font-weight:500;opacity:.85}.voltag{font-size:7.5px;font-weight:700;color:#cbd5e1;border:1px solid #64748b;border-radius:3px;padding:0 2px;margin-left:3px;vertical-align:1px;letter-spacing:.3px}`;document.head.appendChild(st)})();
 const POSITIONS=new Set(["LYFT"]); // tickers Bobby holds a position in (marker only, no details)
 function pos(t){return POSITIONS.has(t)?'<span class="postag" title="You hold a position in this ticker">POS</span>':""}
 function vb(t,full){return pos(t)+er(t,!full)+sq(t,!full)+vb0(t)}
