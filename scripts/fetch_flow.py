@@ -107,6 +107,14 @@ def process(sym, expected):
     if not all_contracts:
         out.update(status="no_options", message="Option chains returned empty"); return out, []
 
+    # Yahoo can carry a stale day-volume on contracts that did not trade in the latest session.
+    # Treat volume as 0 unless the contract's last trade is on the latest session date for this ticker.
+    session_date = last_trade[:10] if last_trade else None
+    stale = 0
+    for c in all_contracts:
+        if c["vol"] > 0 and (not c["ts"] or c["ts"][:10] != session_date):
+            c["vol"], c["premium"], stale = 0, 0, stale + 1
+            c["vol_oi"] = None
     cvol = sum(c["vol"] for c in all_contracts if c["cp"] == "C"); pvol = sum(c["vol"] for c in all_contracts if c["cp"] == "P")
     coi = sum(c["oi"] for c in all_contracts if c["cp"] == "C"); poi = sum(c["oi"] for c in all_contracts if c["cp"] == "P")
     cprem = sum(c["premium"] for c in all_contracts if c["cp"] == "C"); pprem = sum(c["premium"] for c in all_contracts if c["cp"] == "P")
@@ -146,7 +154,7 @@ def process(sym, expected):
         "nearest_expiry": near["expiry"] if near else None, "max_pain": near["max_pain"] if near else None,
         "top_oi": top_oi, "gex_total": round(total_gex), 
         "gex_top": [{"strike": k, "gex": round(v)} for k, v in sorted(gex_by_strike.items(), key=lambda kv: -abs(kv[1]))[:5]],
-        "last_trade": last_trade,
+        "last_trade": last_trade, "session_date": session_date, "stale_volume_dropped": stale,
     })
     if not name_ok:
         out["message"] = f"Ticker resolved to '{name}', expected {expected}. Verify."

@@ -9,7 +9,7 @@
   <div class="status"><span id="dot" class="dot"></span><span id="stamp">Loading…</span></div>
   <div class="hdr-stats" id="hdrStats"></div>
 </header>
-<div class="notice">Data is derived from <b>delayed (~15 min) public option-chain snapshots</b> (Yahoo Finance via yfinance), refreshed about every 30 min in market hours — <b>not a live trade-by-trade tape</b>. Sweeps, blocks, and true buy/sell side can't be confirmed. "Side" and sentiment are <i>inferred</i> from last price vs. bid/ask (near ask → call bullish / put bearish; near bid → the reverse). Row time = contract's last trade time.</div>
+<div class="notice">Data is derived from <b>delayed (~15 min) public option-chain snapshots</b> (Yahoo Finance via yfinance), refreshed about every 30 min in market hours — <b>not a live trade-by-trade tape</b>. Sweeps, blocks, and true buy/sell side can't be confirmed. "Side" and sentiment are <i>inferred</i> from last price vs. bid/ask (near ask → call bullish / put bearish; near bid → the reverse). Row time = contract's last trade time. Contracts whose last trade is not in the latest session are excluded from volume/premium (Yahoo can carry stale volume).</div>
 <main class="layout">
   <aside class="side">
     <section class="card"><h3>Sentiment leaders <small>(inferred)</small></h3><div id="leaders"></div></section>
