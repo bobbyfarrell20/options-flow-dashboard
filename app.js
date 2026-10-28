@@ -87,12 +87,13 @@ function sqPanel(t){const S=sqInfo(t);if(!S)return"";const W=(D.squeeze.weights|
   const row=(k,grp)=>{const f=S.factors[k];if(!f)return"";const [lab,u]=SQ_LAB[k];let v=f.value;
     if(v==null)v='<span class="muted">n/a</span>';else if(k==="gex")v=(v<0?"negative":"positive")+` ($${money(Math.abs(v))})`;else v=(typeof v==="number"&&v>0&&["si_change","day","d5","cs_skew","net_prem"].includes(k)?"+":"")+v+u;
     return `<tr><td>${lab}</td><td>${v}</td><td>${f.sub==null?"–":f.sub}</td><td>${Math.round((W[grp]||{})[k]*100)}%</td><td class="muted" title="${f.date||""} · ${f.source}">${f.date?(+f.date.slice(5,7))+"/"+(+f.date.slice(8)):"–"}</td></tr>`};
-  const z=sqZone(S.score),lv=S.score==null?"Not scored":S.score>=60?"Squeeze conditions":S.score>=40?"Squeeze watch":"No squeeze setup";
+  const z=sqZone(S.score),lv=S.score==null?"Not scored":S.score>=60?"Squeeze conditions":S.score>=40?"Squeeze watch":"Below watch level";
+  const sub=S.score!=null&&S.score<40?(S.setup>=60?"Strong setup, no trigger yet":(S.trigger>=40&&S.setup<40)?"Momentum without short setup":""):"";
   const weak=S.setup!=null&&S.trigger!=null?(S.setup<40&&S.trigger<25?"Both sides weak":S.setup<S.trigger?"Short-interest setup is the weak side":"Momentum/flow trigger is the weak side"):"";
   return `<div class="sqpanel"><div class="sqhead"><b>Squeeze meter</b> <span class="info" title="${SQ_INFO}">ⓘ</span><span class="muted">risk gauge · not a confirmation</span></div>
    <div class="sqviz"><div class="sqg-wrap">${bigGauge(S.score)}<div class="sqscore ${z}"><b>${S.score??"–"}</b><span>${lv}</span></div></div>
    <div class="sqside">${hbar("Setup",S.setup,"Short-interest side: short % of float, days to cover, SI change (as of "+(S.si_date||"n/a")+")")}${hbar("Trigger",S.trigger,"Momentum + flow side: price moves, stock/options volume, inferred premium, short-dated OTM calls, GEX sign (today)")}
-   <div class="muted sqweak">${weak}</div></div></div>
+   <div class="muted sqweak">${sub?`<b class="sqsub">${sub}</b><br>`:""}${weak}</div></div></div>
    <div class="sqchips">${sqChips(S)}</div>
    <details class="sqdet"><summary>Show factor details</summary>
    <table class="sqt"><tr><th>Factor</th><th>Value</th><th>Pts</th><th>Wt</th><th>As of</th></tr>

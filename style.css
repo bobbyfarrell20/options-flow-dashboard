@@ -240,3 +240,4 @@ table.netsb tbody td:first-child{white-space:normal;overflow:visible;line-height
 table.netsb tbody td:first-child .postag,table.netsb tbody td:first-child .ertag,table.netsb tbody td:first-child .sqtag,table.netsb tbody td:first-child .vbadge{white-space:nowrap}
 .sqscore{position:static;margin-top:2px}.sqscore b{display:inline;font-size:22px;margin-right:6px}
 .sqg-wrap{width:150px}.biggauge{width:150px}.sqbar{grid-template-columns:40px minmax(0,1fr) 24px}.sqviz{gap:8px}.sqside{padding-right:2px}
+.sqsub{color:#fbbf24;font-weight:700}
