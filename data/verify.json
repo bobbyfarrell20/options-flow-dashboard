@@ -1,69 +1,69 @@
 {
- "checked_at": null,
+ "checked_at": "2026-10-28T15:54:25-04:00",
  "tickers": {
   "TSLA": {
-   "status": "unchecked",
-   "checked_at": null
+   "status": "ok",
+   "checked_at": "2026-10-28T15:54:25-04:00"
   },
   "NVDA": {
-   "status": "unchecked",
-   "checked_at": null
+   "status": "off",
+   "checked_at": "2026-10-28T15:54:25-04:00"
   },
   "PLTR": {
-   "status": "unchecked",
-   "checked_at": null
+   "status": "ok",
+   "checked_at": "2026-10-28T15:54:25-04:00"
   },
   "MU": {
-   "status": "unchecked",
-   "checked_at": null
+   "status": "ok",
+   "checked_at": "2026-10-28T15:54:25-04:00"
   },
   "SKM": {
-   "status": "unchecked",
-   "checked_at": null
+   "status": "off",
+   "checked_at": "2026-10-28T15:54:25-04:00"
   },
   "TSM": {
-   "status": "unchecked",
-   "checked_at": null
+   "status": "ok",
+   "checked_at": "2026-10-28T15:54:25-04:00"
   },
   "INTC": {
-   "status": "unchecked",
-   "checked_at": null
+   "status": "ok",
+   "checked_at": "2026-10-28T15:54:25-04:00"
   },
   "MRVL": {
-   "status": "unchecked",
-   "checked_at": null
+   "status": "ok",
+   "checked_at": "2026-10-28T15:54:25-04:00"
   },
   "BE": {
-   "status": "unchecked",
-   "checked_at": null
+   "status": "ok",
+   "checked_at": "2026-10-28T15:54:25-04:00"
   },
   "MSTR": {
-   "status": "unchecked",
-   "checked_at": null
+   "status": "off",
+   "checked_at": "2026-10-28T15:54:25-04:00"
   },
   "ASST": {
-   "status": "unchecked",
-   "checked_at": null
+   "status": "ok",
+   "checked_at": "2026-10-28T15:54:25-04:00"
   },
   "SPCX": {
-   "status": "unchecked",
-   "checked_at": null
+   "status": "ok",
+   "checked_at": "2026-10-28T15:54:25-04:00"
   },
   "ECHO": {
-   "status": "unchecked",
-   "checked_at": null
+   "status": "off",
+   "checked_at": "2026-10-28T15:54:25-04:00"
   },
   "TE": {
-   "status": "unchecked",
-   "checked_at": null
+   "status": "ok",
+   "checked_at": "2026-10-28T15:54:25-04:00"
   },
   "VST": {
-   "status": "unchecked",
-   "checked_at": null
+   "status": "ok",
+   "checked_at": "2026-10-28T15:54:25-04:00"
   },
   "LYFT": {
-   "status": "unchecked",
-   "checked_at": null
+   "status": "ok",
+   "checked_at": "2026-10-28T15:54:25-04:00"
   }
  },
  "days": {}
