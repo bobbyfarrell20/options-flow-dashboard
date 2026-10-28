@@ -60,3 +60,18 @@ table.sb tbody tr.sel td{outline:1px solid #6c8cff;outline-offset:-1px}
 table.sb .empty td{color:#8a8a92;cursor:default}
 .sb-note{font-size:11.5px;color:#8a8f99;margin-top:6px}
 table.sb tbody tr.empty{background-image:none!important}
+/* Net flow card */
+.sb-cards{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:1100px){.sb-cards{grid-template-columns:1fr}.sb-card.net{order:-1}}
+.sb-card.net h2{display:flex;justify-content:space-between;align-items:baseline}
+.net-total{font-size:13px;color:#a9a9b0}.net-total b{font-size:16px;margin-left:4px}
+table.netsb thead th{text-align:left}table.netsb th.c,table.netsb td.c{text-align:center}table.netsb th.r,table.netsb td.r{text-align:right}
+table.netsb thead th:nth-child(1){width:22%}table.netsb thead th:nth-child(2){width:56%}
+table.netsb td.c{padding:6px 8px}
+.dv{position:relative;height:26px;display:flex;align-items:center;justify-content:center}
+.dv::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:#55555c}
+.dv i{position:absolute;top:3px;bottom:3px}
+.dv i.pos{left:50%;background:linear-gradient(90deg,#244d28,#3f8f45);border-radius:0 3px 3px 0}
+.dv i.neg{right:50%;background:linear-gradient(270deg,#5c1c20,#b8323a);border-radius:3px 0 0 3px}
+.dv span{position:relative;font-weight:600;text-shadow:0 1px 2px #000;background:rgba(20,20,22,.55);padding:0 5px;border-radius:3px}
+table.netsb tr.nodata td{color:#7a7a82}

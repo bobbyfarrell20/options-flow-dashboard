@@ -26,6 +26,17 @@ function board(){
     $(id).innerHTML=rows.length?rows.map(r=>`<tr data-t="${r.ticker}" class="${st.tk.size===1&&st.tk.has(r.ticker)?"sel":""}" style="background-size:${Math.max(2,r.premium/top*100).toFixed(1)}% 100%"><td>${r.ticker}</td><td>${n(r.orders)}</td><td>${money(r.premium)}</td></tr>`).join(""):`<tr class="empty"><td colspan="3">No inferred flow available</td></tr>`;
     $(id).querySelectorAll("tr[data-t]").forEach(e=>e.onclick=()=>{pick(e.dataset.t);document.querySelector(".tablewrap").scrollIntoView({behavior:"smooth"})});};
   fill("#sbBull",b.bullish);fill("#sbBear",b.bearish);
+  const nets=D.tickers.filter(t=>t.status==="ok").map(t=>{const f=t.flow_sentiment||{},has=t.side_source!=="unavailable"&&((f.bull_premium||0)+(f.bear_premium||0))>0;
+    return {ticker:t.ticker,has,net:(f.bull_premium||0)-(f.bear_premium||0),no:(f.bull_orders||0)-(f.bear_orders||0)}});
+  D.tickers.filter(t=>t.status!=="ok").forEach(t=>nets.push({ticker:t.ticker,has:false,net:0,no:0}));
+  const withD=nets.filter(x=>x.has).sort((a,b)=>b.net-a.net),noD=nets.filter(x=>!x.has);
+  const mx=Math.max(1,...withD.map(x=>Math.abs(x.net))),sg=v=>(v>0?"+":v<0?"-":"")+money(Math.abs(v));
+  const tn=b.bull_total-b.bear_total;
+  $("#netTotal").innerHTML=`Watchlist <b class="${tn>=0?"C":"P"}">${sg(tn)}</b>`;
+  $("#sbNet").innerHTML=withD.map(x=>{const w=(Math.abs(x.net)/mx*50).toFixed(1);
+    return `<tr data-t="${x.ticker}" class="${st.tk.size===1&&st.tk.has(x.ticker)?"sel":""}"><td>${x.ticker}</td><td class="c"><div class="dv"><i class="${x.net>=0?"pos":"neg"}" style="width:${w}%"></i><span class="${x.net>=0?"C":"P"}">${sg(x.net)}</span></div></td><td class="r">${x.no>0?"+":""}${n(x.no)}</td></tr>`}).join("")
+   +noD.map(x=>`<tr data-t="${x.ticker}" class="nodata"><td>${x.ticker}</td><td class="c">—</td><td class="r">—</td></tr>`).join("");
+  $("#sbNet").querySelectorAll("tr[data-t]").forEach(e=>e.onclick=()=>{pick(e.dataset.t);document.querySelector(".tablewrap").scrollIntoView({behavior:"smooth"})});
   const src=b.side_sources||{},cached=Object.keys(src).filter(k=>src[k]==="cached"),na=Object.keys(src).filter(k=>src[k]==="unavailable");
   let extra="";if(cached.length)extra+=` Sides for ${cached.join(", ")} carried from the last in-session snapshot (current quotes are pre-market/after-hours).`;
   if(na.length)extra+=` No side data for ${na.join(", ")} (no trades yet in the current session, or quotes outside session hours).`;
