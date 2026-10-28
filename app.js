@@ -1,0 +1,82 @@
+const WATCH=["TSLA","NVDA","PLTR","MU","SKM","TSM","INTC","MRVL","BE","MSTR","ASST","SPCX","ECHO","TE","VRT"];
+const st={tk:new Set(),cp:"all",sent:"all",minPrem:100000,dte:"9999",unusual:false,otm:false,q:"",sort:"premium",dir:-1};
+let D=null;const $=s=>document.querySelector(s);
+const money=v=>v==null?"–":(Math.abs(v)>=1e9?(v/1e9).toFixed(2)+"B":Math.abs(v)>=1e6?(v/1e6).toFixed(2)+"M":Math.abs(v)>=1e3?(v/1e3).toFixed(0)+"K":Math.round(v)+"");
+const n=v=>v==null?"–":Number(v).toLocaleString();
+const tfmt=s=>{if(!s)return"–";const d=new Date(s);return d.toLocaleString("en-US",{timeZone:"America/New_York",month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"})};
+async function load(){
+  try{const r=await fetch("data/flow.json?ts="+Date.now());D=await r.json();}catch(e){$("#stamp").textContent="Could not load data";return}
+  const g=new Date(D.generated_at);
+  $("#stamp").textContent=`Snapshot ${g.toLocaleString("en-US",{timeZone:"America/New_York",weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})} ET · ${D.market_open_at_snapshot?"market open (delayed)":"market closed — latest session"}`;
+  $("#dot").className="dot "+(D.market_open_at_snapshot?"live":"closed");
+  const ok=D.tickers.filter(t=>t.status==="ok");
+  const cp=ok.reduce((a,t)=>a+t.call_premium,0),pp=ok.reduce((a,t)=>a+t.put_premium,0);
+  $("#hdrStats").innerHTML=`<div>Call prem <b class="C">$${money(cp)}</b></div><div>Put prem <b class="P">$${money(pp)}</b></div><div>P/C prem <b>${(pp/cp).toFixed(2)}</b></div><div>Tape rows <b>${D.flow.length}</b></div>`;
+  chips();leaders();overview();render();
+}
+function tick(t){return D.tickers.find(x=>x.ticker===t)}
+function chips(){
+  const c=$("#chips");c.innerHTML=`<button class="chip ${st.tk.size?"":"on"}" data-t="ALL">All watchlist</button>`+WATCH.map(t=>{const x=tick(t);const ch=x&&x.change_pct!=null?x.change_pct:null;
+    return `<button class="chip ${st.tk.has(t)?"on":""} ${x&&x.status==="ok"?"":"bad"}" data-t="${t}" title="${x?(x.name||x.message||""):""}">${t}${ch!=null?`<span class="d ${ch>=0?"C":"P"}">${ch>=0?"+":""}${ch.toFixed(1)}%</span>`:""}</button>`}).join("");
+  c.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{const t=b.dataset.t;if(t==="ALL")st.tk.clear();else st.tk.has(t)?st.tk.delete(t):st.tk.add(t);chips();render();detail(t==="ALL"?null:t)});
+}
+function leaders(){
+  const s=D.summary,row=t=>{const x=tick(t);return `<div data-t="${t}"><b>${t}</b> <span class="muted">${x.bias_score>0?"+":""}${x.bias_score} · P/C ${x.pc_vol??"–"}</span></div>`};
+  $("#leaders").innerHTML=`<div class="lead"><div><h4 class="g">Bullish tilt</h4>${s.bullish.map(row).join("")||'<span class="muted">none</span>'}</div><div><h4 class="r">Bearish tilt</h4>${s.bearish.map(row).join("")||'<span class="muted">none</span>'}</div></div><div class="muted" style="margin-top:6px;font-size:11px">Score = (inferred bullish − bearish premium) ÷ total, across the largest tape rows. Inferred, not confirmed.</div>`;
+  $("#leaders").querySelectorAll("[data-t]").forEach(e=>e.onclick=()=>pick(e.dataset.t));
+}
+function overview(){
+  $("#overview").innerHTML=`<tr><th>Tkr</th><th>Spot</th><th>P/C vol</th><th>Call $</th><th>Put $</th><th>Max pain</th></tr>`+WATCH.map(t=>{const x=tick(t);
+    if(!x||x.status!=="ok")return `<tr data-t="${t}"><td><b>${t}</b></td><td colspan="5" class="muted">${x?(x.message||"no options data"):"no data"}</td></tr>`;
+    return `<tr data-t="${t}"><td><b>${t}</b>${x.name_ok?"":' <span class="warn">⚠</span>'}</td><td>${x.spot}</td><td class="${x.pc_vol>1?"P":"C"}">${x.pc_vol??"–"}</td><td>${money(x.call_premium)}</td><td>${money(x.put_premium)}</td><td>${x.max_pain??"–"}</td></tr>`}).join("");
+  $("#overview").querySelectorAll("tr[data-t]").forEach(e=>e.onclick=()=>pick(e.dataset.t));
+}
+function pick(t){st.tk=new Set([t]);chips();render();detail(t)}
+function detail(t){
+  if(!t){$("#tkTitle").textContent="Ticker detail";$("#tkDetail").innerHTML='<span class="muted">Pick a ticker chip to see details.</span>';return}
+  const x=tick(t);$("#tkTitle").textContent=`${t} · ${x&&x.name?x.name:""}`;
+  if(!x||x.status!=="ok"){$("#tkDetail").innerHTML=`<span class="muted">No options data${x&&x.message?": "+x.message:""}</span>`;return}
+  const tot=x.call_premium+x.put_premium,pct=tot?x.call_premium/tot*100:50;
+  $("#tkDetail").innerHTML=`
+   <div class="kv"><span>Spot</span><span>$${x.spot} <span class="${x.change_pct>=0?"C":"P"}">${x.change_pct>=0?"+":""}${x.change_pct}%</span></span></div>
+   <div style="margin-top:8px" class="muted">Call vs put premium (est.)</div><div class="bar"><i style="width:${pct}%"></i></div>
+   <div class="kv"><span>Call premium</span><span class="C">$${money(x.call_premium)}</span><span>Put premium</span><span class="P">$${money(x.put_premium)}</span>
+   <span>P/C ratio (volume)</span><span>${x.pc_vol??"–"}</span><span>P/C ratio (OI)</span><span>${x.pc_oi??"–"}</span>
+   <span>Call / put volume</span><span>${n(x.call_vol)} / ${n(x.put_vol)}</span>
+   <span>Max pain (${x.nearest_expiry})</span><span>$${x.max_pain}</span>
+   <span>Approx. net GEX ($ per 1% move)</span><span class="${x.gex_total>=0?"C":"P"}">${x.gex_total>=0?"+":""}$${money(x.gex_total)}</span>
+   <span>Unusual contracts</span><span>${x.unusual_count}</span>
+   <span>Expiries scanned</span><span>${x.expiries_scanned} (${n(x.contracts)} contracts)</span></div>
+   <div style="margin-top:8px" class="muted">Top strikes by open interest</div>
+   <div class="kv">${x.top_oi.map(o=>`<span><span class="${o.cp}">${o.cp}</span> $${o.strike}</span><span>${n(o.oi)}</span>`).join("")}</div>
+   <div style="margin-top:8px" class="muted">Largest GEX strikes (approx.)</div>
+   <div class="kv">${x.gex_top.map(o=>`<span>$${o.strike}</span><span class="${o.gex>=0?"C":"P"}">${money(o.gex)}</span>`).join("")}</div>
+   ${x.name_ok?"":`<div class="warn">⚠ ${x.message}</div>`}`;
+}
+function rows(){
+  return D.flow.filter(r=>{
+    if(st.tk.size&&!st.tk.has(r.ticker))return false;
+    if(st.cp!=="all"&&r.cp!==st.cp)return false;
+    if(st.sent!=="all"&&r.sentiment!==st.sent)return false;
+    if(r.premium<st.minPrem)return false;
+    if(st.dte==="61+"){if(r.dte<=60)return false}else if(r.dte>+st.dte)return false;
+    if(st.unusual&&!r.unusual)return false;if(st.otm&&!r.otm)return false;
+    if(st.q&&!(r.symbol+" "+r.strike).toLowerCase().includes(st.q))return false;return true;
+  }).sort((a,b)=>{let x=a[st.sort],y=b[st.sort];x=x??-1;y=y??-1;return (x>y?1:x<y?-1:0)*st.dir});
+}
+function render(){
+  const R=rows(),tb=$("#flow tbody");
+  tb.innerHTML=R.slice(0,600).map(r=>`<tr class="${r.sentiment}">
+   <td>${tfmt(r.time)}</td><td class="tk">${r.ticker}</td><td>${r.expiry} <span class="muted">${r.dte}d</span></td><td>${r.strike}</td><td class="${r.cp}">${r.cp==="C"?"CALL":"PUT"}</td>
+   <td class="side-${r.side}">${{ask:"Ask",bid:"Bid",mid:"Mid",na:"–"}[r.side]}</td><td>${r.spot}</td><td>${r.last.toFixed(2)} <span class="muted">${r.bid.toFixed(2)}/${r.ask.toFixed(2)}</span></td>
+   <td>${n(r.vol)}</td><td class="prem ${r.premium>=1e6?"big":""}">$${money(r.premium)}</td><td>${n(r.oi)}</td><td>${r.vol_oi==null?"–":r.vol_oi>=999?"new":r.vol_oi.toFixed(2)}</td><td>${r.iv.toFixed(1)}%</td>
+   <td>${r.tags.map(t=>`<span class="tag ${t.split(" ")[0]}">${t}</span>`).join("")}</td></tr>`).join("");
+  $("#count").textContent=`${R.length} contracts match${R.length>600?" (showing top 600)":""} · sorted by ${st.sort} · green = inferred bullish, red = inferred bearish`;
+}
+function seg(id,key){document.querySelectorAll(id+" button").forEach(b=>b.onclick=()=>{document.querySelectorAll(id+" button").forEach(x=>x.classList.remove("on"));b.classList.add("on");st[key]=b.dataset.v;render()})}
+seg("#cpSeg","cp");seg("#sentSeg","sent");
+$("#minPrem").onchange=e=>{st.minPrem=+e.target.value;render()};$("#dteSel").onchange=e=>{st.dte=e.target.value;render()};
+$("#unusualOnly").onchange=e=>{st.unusual=e.target.checked;render()};$("#otmOnly").onchange=e=>{st.otm=e.target.checked;render()};
+$("#search").oninput=e=>{st.q=e.target.value.toLowerCase();render()};
+document.querySelectorAll("#flow th[data-k]").forEach(th=>th.onclick=()=>{const k=th.dataset.k;st.dir=st.sort===k?-st.dir:-1;st.sort=k;render()});
+load();setInterval(load,5*60*1000);

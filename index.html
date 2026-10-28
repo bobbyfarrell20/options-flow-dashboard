@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Farrell Flow · Watchlist Options Flow</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<header class="top">
+  <div class="brand"><span class="logo">◆</span> Farrell<b>Flow</b></div>
+  <div class="status"><span id="dot" class="dot"></span><span id="stamp">Loading…</span></div>
+  <div class="hdr-stats" id="hdrStats"></div>
+</header>
+<div class="notice">Data is derived from <b>delayed (~15 min) public option-chain snapshots</b> (Yahoo Finance via yfinance), refreshed about every 30 min in market hours — <b>not a live trade-by-trade tape</b>. Sweeps, blocks, and true buy/sell side can't be confirmed. "Side" and sentiment are <i>inferred</i> from last price vs. bid/ask (near ask → call bullish / put bearish; near bid → the reverse). Row time = contract's last trade time.</div>
+<main class="layout">
+  <aside class="side">
+    <section class="card"><h3>Sentiment leaders <small>(inferred)</small></h3><div id="leaders"></div></section>
+    <section class="card"><h3 id="tkTitle">Ticker detail</h3><div id="tkDetail" class="muted">Pick a ticker chip to see put/call, premium split, top OI strikes, max pain and GEX.</div></section>
+    <section class="card"><h3>Watchlist overview</h3><table class="mini" id="overview"></table></section>
+  </aside>
+  <section class="main">
+    <div class="chips" id="chips"></div>
+    <div class="filters">
+      <div class="seg" id="cpSeg"><button data-v="all" class="on">All</button><button data-v="C">Calls</button><button data-v="P">Puts</button></div>
+      <div class="seg" id="sentSeg"><button data-v="all" class="on">Any</button><button data-v="bullish">Bullish</button><button data-v="bearish">Bearish</button></div>
+      <label>Min premium <select id="minPrem"><option value="0">Any</option><option value="50000">$50K</option><option value="100000" selected>$100K</option><option value="250000">$250K</option><option value="1000000">$1M</option><option value="5000000">$5M</option></select></label>
+      <label>Expiry <select id="dteSel"><option value="9999">All</option><option value="0">0DTE</option><option value="7">≤ 1 wk</option><option value="30">≤ 30 d</option><option value="60">≤ 60 d</option><option value="61+">&gt; 60 d</option></select></label>
+      <label class="chk"><input type="checkbox" id="unusualOnly"> Unusual only</label>
+      <label class="chk"><input type="checkbox" id="otmOnly"> OTM only</label>
+      <input id="search" placeholder="Search strike/contract…">
+    </div>
+    <div class="tablewrap">
+      <table class="flow" id="flow">
+        <thead><tr>
+          <th data-k="time">Time</th><th data-k="ticker">Ticker</th><th data-k="expiry">Expiry</th><th data-k="strike">Strike</th><th data-k="cp">C/P</th>
+          <th data-k="side">Side*</th><th data-k="spot">Spot</th><th data-k="last">Price</th><th data-k="vol">Size/Vol</th><th data-k="premium">Premium</th>
+          <th data-k="oi">OI</th><th data-k="vol_oi">Vol/OI</th><th data-k="iv">IV</th><th>Tags</th>
+        </tr></thead><tbody></tbody>
+      </table>
+    </div>
+    <div class="count" id="count"></div>
+  </section>
+</main>
+<footer>Research based on public data — <b>not financial advice</b>. Verify independently and make your own decisions. Not affiliated with any flow-data vendor. *Side inferred, not confirmed. Premium ≈ day volume × last (or mid) × 100. GEX is an approximation from Black-Scholes gamma × OI, assuming dealers are long calls / short puts.</footer>
+<script src="app.js"></script>
+</body></html>
