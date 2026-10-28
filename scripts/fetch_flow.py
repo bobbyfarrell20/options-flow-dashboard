@@ -11,7 +11,7 @@ WATCHLIST = [
     ("TSLA", "Tesla"), ("NVDA", "NVIDIA"), ("PLTR", "Palantir"), ("MU", "Micron"),
     ("SKM", "SK Telecom"), ("TSM", "Taiwan Semiconductor"), ("INTC", "Intel"),
     ("MRVL", "Marvell"), ("BE", "Bloom Energy"), ("MSTR", "Strategy"), ("ASST", "Strive"),
-    ("SPCX", "Space Exploration"), ("ECHO", "EchoStar"), ("TE", "T1 Energy"), ("VRT", "Vertiv"),
+    ("SPCX", "Space Exploration"), ("ECHO", "EchoStar"), ("TE", "T1 Energy"), ("VST", "Vistra"), ("LYFT", "Lyft"),
 ]
 MAX_EXPIRIES = 8          # nearest N expirations per ticker
 MAX_DTE = 120
@@ -264,6 +264,8 @@ def main():
                 "lookback": vb.LOOKBACK, "min_days": vb.MIN_DAYS, "thresholds": {"high": 1.5, "extreme": 3.0}}
     data = {"volume_meta": vol_meta, "sentiment_board": sentiment_board, "generated_at": now.isoformat(), "market_open_at_snapshot": open_, "source": "Yahoo Finance option chains via yfinance (delayed ~15 min)",
             "tickers": tickers, "flow": sorted(flow, key=lambda r: r["premium"], reverse=True), "summary": summary}
+    keep = {sym for sym, _ in WATCHLIST}
+    for k in [k for k in SIDE_CACHE if k not in keep]: del SIDE_CACHE[k]   # drop removed tickers
     with open(SIDES_PATH, "w") as fh: json.dump(SIDE_CACHE, fh, separators=(",", ":"))
     with open("data/flow.json", "w") as fh: json.dump(data, fh, separators=(",", ":"))
     print("wrote", len(flow), "rows")

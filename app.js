@@ -1,5 +1,5 @@
 const RAW_URL="https://raw.githubusercontent.com/bobbyfarrell20/options-flow-dashboard/main/data/flow.json";
-const WATCH=["TSLA","NVDA","PLTR","MU","SKM","TSM","INTC","MRVL","BE","MSTR","ASST","SPCX","ECHO","TE","VRT"];
+const WATCH=["TSLA","NVDA","PLTR","MU","SKM","TSM","INTC","MRVL","BE","MSTR","ASST","SPCX","ECHO","TE","VST","LYFT"];
 const st={tk:new Set(),cp:"all",sent:"all",minPrem:100000,dte:"9999",unusual:false,otm:false,q:"",sort:"premium",dir:-1};
 let D=null;const $=s=>document.querySelector(s);
 const money=v=>v==null?"–":(Math.abs(v)>=1e9?(v/1e9).toFixed(2)+"B":Math.abs(v)>=1e6?(v/1e6).toFixed(2)+"M":Math.abs(v)>=1e3?(v/1e3).toFixed(0)+"K":Math.round(v)+"");
@@ -51,7 +51,10 @@ function board(){
   $("#sbNote").dataset.base=$("#sbNote").dataset.base||$("#sbNote").textContent;$("#sbNote").textContent=$("#sbNote").dataset.base+extra+volNote();
 }
 function tick(t){return D.tickers.find(x=>x.ticker===t)}
-function vb(t){const x=tick(t),v=x&&x.vol_vs_avg;if(!v||!v.flag)return"";
+const POSITIONS=new Set(["LYFT"]); // tickers Bobby holds a position in (marker only, no details)
+function pos(t){return POSITIONS.has(t)?'<span class="pos" title="You hold a position in this ticker">POS</span>':""}
+function vb(t){return pos(t)+vb0(t)}
+function vb0(t){const x=tick(t),v=x&&x.vol_vs_avg;if(!v||!v.flag)return"";
   const tip=`Options volume ${n(v.today)} contracts (all expirations, session ${v.session_date}) vs ${v.baseline_days}-session avg ${n(v.baseline)} (OCC). Raw ratio ${v.ratio}x`+(v.basis==="pace"?`; pace ratio ${v.pace_ratio}x = raw ÷ ${(v.session_fraction*100).toFixed(0)}% of session elapsed (assumes even volume through the day; early-session pace overstates).`:v.basis==="full session"?" (full session).":` (${v.basis}).`)+` Badge at ≥1.5x, strong at ≥3x.`;
   return ` <span class="vb ${v.flag}" title="${tip}">🔥${v.flag_ratio.toFixed(1)}x</span>`}
 function chips(){

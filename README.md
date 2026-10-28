@@ -1,7 +1,7 @@
 # Farrell Flow
 
 A dark, dense options-flow style dashboard for a fixed 15-ticker watchlist:
-TSLA, NVDA, PLTR, MU, SKM, TSM, INTC, MRVL, BE, MSTR, ASST, SPCX, ECHO, TE, VRT.
+TSLA, NVDA, PLTR, MU, SKM, TSM, INTC, MRVL, BE, MSTR, ASST, SPCX, ECHO, TE, VST, LYFT.
 
 Live site: https://bobbyfarrell20.github.io/options-flow-dashboard/
 

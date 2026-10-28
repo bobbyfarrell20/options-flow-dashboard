@@ -52,6 +52,9 @@ def update(h, tickers, today, max_new_days=25, budget_s=150):
         fetched += 1
         if vols: h["days"][key] = vols
         elif (today - day).days > 3: h["checked"][key] = "empty"   # holiday / no data; recheck recent days later
+    # drop tickers no longer on the watchlist
+    for k in list(h["days"]):
+        h["days"][k] = {s: v for s, v in h["days"][k].items() if s in tickers}
     # keep only the most recent 40 sessions
     for k in sorted(h["days"])[:-40]: del h["days"][k]
     return h
