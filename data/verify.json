@@ -1,5 +1,5 @@
 {
- "checked_at": "2026-10-29T11:15:51-04:00",
+ "checked_at": "2026-10-29T11:17:48-04:00",
  "tickers": {
   "TSLA": {
    "status": "ok",
@@ -22,8 +22,8 @@
    "checked_at": "2026-10-29T11:15:51-04:00"
   },
   "TSM": {
-   "status": "off",
-   "checked_at": "2026-10-29T11:15:51-04:00"
+   "status": "ok",
+   "checked_at": "2026-10-29T11:17:48-04:00"
   },
   "INTC": {
    "status": "off",
