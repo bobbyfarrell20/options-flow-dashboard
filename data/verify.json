@@ -66,5 +66,24 @@
    "checked_at": "2026-10-28T15:54:25-04:00"
   }
  },
- "days": {}
+ "days": {
+  "2026-10-28": {
+   "TSLA": "ok",
+   "NVDA": "off",
+   "PLTR": "ok",
+   "MU": "ok",
+   "SKM": "off",
+   "TSM": "ok",
+   "INTC": "ok",
+   "MRVL": "ok",
+   "BE": "ok",
+   "MSTR": "off",
+   "ASST": "ok",
+   "SPCX": "ok",
+   "ECHO": "off",
+   "TE": "ok",
+   "VST": "ok",
+   "LYFT": "ok"
+  }
+ }
 }
