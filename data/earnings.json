@@ -1,6 +1,6 @@
 {
- "fetched": "2026-10-29",
- "fetched_at": "2026-10-29T10:00:03-04:00",
+ "fetched": "2026-10-30",
+ "fetched_at": "2026-10-30T10:18:53-04:00",
  "nasdaq_days_ok": 9,
  "sources": {
   "Yahoo": "Yahoo Finance quote data via yfinance (earningsTimestampStart, isEarningsDateEstimate, call time)",
@@ -61,16 +61,20 @@
   },
   "SKM": {
    "next": {
+    "date": "2026-11-04",
+    "timing": null,
+    "estimated": true,
+    "source": "Yahoo"
+   },
+   "last": {
     "date": "2026-10-29",
     "timing": null,
-    "estimated": null,
-    "source": "Nasdaq"
+    "estimated": null
    },
-   "last": null,
    "sources": [
-    "Nasdaq"
+    "Yahoo"
    ],
-   "conflict": "Yahoo estimate was 2026-11-04"
+   "conflict": null
   },
   "TSM": {
    "next": {
@@ -87,16 +91,18 @@
   },
   "INTC": {
    "next": {
-    "date": "2026-10-29",
-    "timing": "AMC",
-    "estimated": false,
-    "source": "Yahoo",
-    "timing_source": "Nasdaq"
+    "date": "2027-01-28",
+    "timing": null,
+    "estimated": true,
+    "source": "Yahoo"
    },
-   "last": null,
+   "last": {
+    "date": "2026-10-29",
+    "timing": null,
+    "estimated": null
+   },
    "sources": [
-    "Yahoo",
-    "Nasdaq"
+    "Yahoo"
    ],
    "conflict": null
   },
@@ -124,18 +130,13 @@
    "conflict": null
   },
   "MSTR": {
-   "next": {
+   "next": null,
+   "last": {
     "date": "2026-10-29",
     "timing": "AMC",
-    "estimated": false,
-    "source": "Yahoo",
-    "timing_source": "Nasdaq"
+    "estimated": false
    },
-   "last": null,
-   "sources": [
-    "Yahoo",
-    "Nasdaq"
-   ],
+   "sources": [],
    "conflict": null
   },
   "ASST": {
@@ -192,13 +193,15 @@
   "VST": {
    "next": {
     "date": "2026-11-06",
-    "timing": null,
+    "timing": "BMO",
     "estimated": false,
-    "source": "Yahoo"
+    "source": "Yahoo",
+    "timing_source": "Nasdaq"
    },
    "last": null,
    "sources": [
-    "Yahoo"
+    "Yahoo",
+    "Nasdaq"
    ],
    "conflict": null
   },
