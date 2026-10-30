@@ -1,5 +1,5 @@
 {
- "checked_at": "2026-10-30T10:34:22-04:00",
+ "checked_at": "2026-10-30T10:36:46-04:00",
  "tickers": {
   "TSLA": {
    "status": "ok",
@@ -34,8 +34,8 @@
    "checked_at": "2026-10-30T10:34:22-04:00"
   },
   "BE": {
-   "status": "off",
-   "checked_at": "2026-10-30T10:34:22-04:00"
+   "status": "unchecked",
+   "checked_at": null
   },
   "MSTR": {
    "status": "ok",
