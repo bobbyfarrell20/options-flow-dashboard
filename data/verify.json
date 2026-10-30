@@ -1,5 +1,5 @@
 {
- "checked_at": "2026-10-30T17:47:40-04:00",
+ "checked_at": "2026-10-30T17:47:47-04:00",
  "tickers": {
   "TSLA": {
    "status": "off",
@@ -58,8 +58,8 @@
    "checked_at": "2026-10-30T17:47:40-04:00"
   },
   "VST": {
-   "status": "off",
-   "checked_at": "2026-10-30T15:23:31-04:00"
+   "status": "unchecked",
+   "checked_at": null
   },
   "LYFT": {
    "status": "off",
