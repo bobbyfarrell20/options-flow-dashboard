@@ -1,69 +1,69 @@
 {
- "checked_at": "2026-10-30T10:36:46-04:00",
+ "checked_at": "2026-10-30T11:11:51-04:00",
  "tickers": {
   "TSLA": {
    "status": "ok",
-   "checked_at": "2026-10-30T10:34:22-04:00"
+   "checked_at": "2026-10-30T11:11:51-04:00"
   },
   "NVDA": {
    "status": "ok",
-   "checked_at": "2026-10-30T10:34:22-04:00"
+   "checked_at": "2026-10-30T11:11:51-04:00"
   },
   "PLTR": {
    "status": "off",
-   "checked_at": "2026-10-30T10:34:22-04:00"
+   "checked_at": "2026-10-30T11:11:51-04:00"
   },
   "MU": {
    "status": "ok",
-   "checked_at": "2026-10-30T10:34:22-04:00"
+   "checked_at": "2026-10-30T11:11:51-04:00"
   },
   "SKM": {
-   "status": "off",
-   "checked_at": "2026-10-29T12:19:13-04:00"
-  },
-  "TSM": {
-   "status": "ok",
-   "checked_at": "2026-10-30T10:34:22-04:00"
-  },
-  "INTC": {
-   "status": "ok",
-   "checked_at": "2026-10-30T10:34:22-04:00"
-  },
-  "MRVL": {
-   "status": "off",
-   "checked_at": "2026-10-30T10:34:22-04:00"
-  },
-  "BE": {
    "status": "unchecked",
    "checked_at": null
   },
+  "TSM": {
+   "status": "off",
+   "checked_at": "2026-10-30T11:11:51-04:00"
+  },
+  "INTC": {
+   "status": "ok",
+   "checked_at": "2026-10-30T11:11:51-04:00"
+  },
+  "MRVL": {
+   "status": "off",
+   "checked_at": "2026-10-30T11:11:51-04:00"
+  },
+  "BE": {
+   "status": "off",
+   "checked_at": "2026-10-30T11:11:51-04:00"
+  },
   "MSTR": {
    "status": "ok",
-   "checked_at": "2026-10-30T10:34:22-04:00"
+   "checked_at": "2026-10-30T11:11:51-04:00"
   },
   "ASST": {
    "status": "ok",
-   "checked_at": "2026-10-30T10:34:22-04:00"
+   "checked_at": "2026-10-30T11:11:51-04:00"
   },
   "SPCX": {
-   "status": "off",
-   "checked_at": "2026-10-30T10:34:22-04:00"
+   "status": "ok",
+   "checked_at": "2026-10-30T11:11:51-04:00"
   },
   "ECHO": {
-   "status": "ok",
-   "checked_at": "2026-10-29T14:23:42-04:00"
+   "status": "off",
+   "checked_at": "2026-10-30T11:11:51-04:00"
   },
   "TE": {
    "status": "off",
-   "checked_at": "2026-10-30T10:34:22-04:00"
+   "checked_at": "2026-10-30T11:11:51-04:00"
   },
   "VST": {
    "status": "off",
-   "checked_at": "2026-10-30T10:34:22-04:00"
+   "checked_at": "2026-10-30T11:11:51-04:00"
   },
   "LYFT": {
    "status": "ok",
-   "checked_at": "2026-10-30T10:34:22-04:00"
+   "checked_at": "2026-10-30T11:11:51-04:00"
   }
  },
  "days": {
