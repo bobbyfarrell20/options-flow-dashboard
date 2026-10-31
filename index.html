@@ -1,84 +1,22 @@
 <!doctype html>
-<html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Farrell Flow · Watchlist Options Flow</title>
-<link rel="stylesheet" href="style.css">
-</head><body>
-<header class="top">
-  <div class="brand"><span class="logo">◆</span> Farrell<b>Flow</b></div>
-  <div class="status"><span id="dot" class="dot"></span><span id="stamp">Loading…</span><button id="refreshBtn" class="refresh" title="Loads the latest data snapshot; new snapshots arrive about every 10 min during market hours."><span class="ic">⟳</span> <span class="lb">Refresh</span></button></div>
-  <div class="hdr-stats" id="hdrStats"></div>
-</header>
-<section class="sentboard" id="sentboard">
-  <div class="sb-strip" id="sbStrip"></div>
-  <div class="sb-cards two">
-    <div class="sb-card net"><h2>Net flow <span class="net-total" id="netTotal"></span></h2><table class="sb netsb"><thead><tr><th>TICKER</th><th class="c">NET PREMIUM</th><th class="r"><span style="float:left" title="Big-money lean (≥$250K contract batches, estimate); hover a line for the split">BIG $</span>NET ORDERS</th></tr></thead><tbody id="sbNet"></tbody></table></div>
-    <div class="sb-card fc" id="flowChartCard">
-      <div class="fc-head"><h2>When the flow came in</h2>
-        <div class="fc-ctl">
-          <span class="seg" id="fcMode" title="Heatmap (default) or multi-line chart"><button data-v="heat" class="on">Heatmap</button><button data-v="lines">Lines</button></span>
-          <span class="seg" id="fcScale" title="Heatmap color intensity"><button data-v="row" class="on" title="Each row scaled to its own biggest interval: best for seeing WHEN each ticker's flow came in">Per-ticker</button><button data-v="shared" title="One scale for all rows: best for comparing SIZE across tickers">Shared</button></span>
-          <label class="chk" id="fcNormWrap" title="Multi-ticker view: cumulative = net as % of that ticker's directional premium; per interval = scaled to each ticker's own largest move"><input type="checkbox" id="fcNorm"> Normalize</label>
-          <span class="seg" id="fcPresets"><button data-v="30">30m</button><button data-v="60">1h</button><button data-v="120">2h</button><button data-v="full">Full session</button><button data-v="auto">Fit</button></span>
-          <span class="fc-date"><button id="fcPrev" title="Previous stored session">◀</button><span id="fcDate">–</span><button id="fcNext" title="Next session">▶</button></span>
-        </div></div>
-      <div class="fc-chips" id="fcChips"></div>
-      <div class="fc-msg" id="fcMsg" style="display:none"></div>
-      <div class="fc-heat" id="fcHeat"></div>
-      <div class="fc-canvas" id="fcCanvasWrap"><canvas id="fcCanvas"></canvas></div>
-      <div class="fc-brush" id="fcBrush" title="Drag the window to pan, drag its edges to resize, or drag elsewhere to select a range"><div class="data"></div><div class="win"><span data-h="l"></span><span data-h="r"></span></div><div class="lab"><span>9:30</span><span>12:00</span><span>4:00 PM</span></div></div>
-      <div class="fc-foot"><span id="fcInfo"></span> · Each column/point is a delayed (~15 min) snapshot; Classification is incremental and locked in: for each contract only the volume added since the previous snapshot is classified (bullish/bearish/neutral from that snapshot's bid/ask/last) and added to running session totals; volume already classified is never re-classified, so an interval = only the newly traded volume's inferred net. The day's first snapshot covers volume since the open; a downward volume correction from the source shrinks that contract's totals proportionally. Sides are still inferred from delayed quotes, not a trade tape. Slider and presets set the time window; on charts wheel/pinch zooms. Dots = flips (net crossed zero).</div>
-    </div>
-  </div>
-  <div class="sb-note" id="sbNote">Premium = running session totals built incrementally: each snapshot classifies only the volume new since the last snapshot (calls near ask / puts near bid = bullish; puts near ask / calls near bid = bearish; mid = neutral) and locks it in. Orders = contracts whose locked-in premium is mostly bullish / bearish. Inferred from delayed public chain data; not confirmed sweeps or blocks. Click a row to focus it in the chart and filter the flow table.</div>
-  <div class="vfy-leg" id="vfyLeg"></div>
-</section>
-<section class="hist card" id="histCard">
-  <div class="fc-head"><h2>Last 5 days</h2>
-    <div class="fc-ctl"><span class="seg" id="hMode"><button data-v="net" class="on">Net flow (side)</button><button data-v="cp">Volume mix (calls vs puts)</button></span></div></div>
-  <div class="fc-chips" id="hChips"></div>
-  <div id="hBody"></div>
-  <div class="fc-foot" id="hNote"></div>
-</section>
-<div class="notice">Data is derived from <b>delayed (~15 min) public option-chain snapshots</b> (Yahoo Finance via yfinance), refreshed about every 10 min in market hours (GitHub schedules can lag) — <b>not a live trade-by-trade tape</b>. Sweeps, blocks, and true buy/sell side can't be confirmed. "Side" and sentiment are <i>inferred</i> from last price vs. bid/ask (near ask → call bullish / put bearish; near bid → the reverse). Row time = contract's last trade time. Contracts whose last trade is not in the latest session are excluded from volume/premium (Yahoo can carry stale volume).</div>
-<main class="layout">
-  <aside class="side">
-    <section class="card"><h3>Sentiment leaders <small>(inferred)</small></h3><div id="leaders"></div></section>
-    <section class="card"><h3 id="tkTitle">Ticker detail</h3><div id="tkDetail" class="muted">Pick a ticker chip to see put/call, premium split, top OI strikes, max pain and GEX.</div></section>
-    <section class="card"><h3>Watchlist overview</h3><table class="mini" id="overview"></table></section>
-  </aside>
-  <section class="main">
-    <div class="chips" id="chips"></div>
-    <div class="filters">
-      <div class="seg" id="cpSeg"><button data-v="all" class="on">All</button><button data-v="C">Calls</button><button data-v="P">Puts</button></div>
-      <div class="seg" id="sentSeg"><button data-v="all" class="on">Any</button><button data-v="bullish">Bullish</button><button data-v="bearish">Bearish</button></div>
-      <label>Min premium <select id="minPrem"><option value="0">Any</option><option value="50000">$50K</option><option value="100000" selected>$100K</option><option value="250000">$250K</option><option value="1000000">$1M</option><option value="5000000">$5M</option></select></label>
-      <label>Expiry <select id="dteSel"><option value="9999">All</option><option value="0">0DTE</option><option value="7">≤ 1 wk</option><option value="30">≤ 30 d</option><option value="60">≤ 60 d</option><option value="61+">&gt; 60 d</option></select></label>
-      <label class="chk"><input type="checkbox" id="unusualOnly"> Unusual only</label>
-      <label class="chk"><input type="checkbox" id="otmOnly"> OTM only</label>
-      <input id="search" placeholder="Search strike/contract…">
-    </div>
-    <div class="legend"><span><span class="sw"><i style="background:rgba(34,197,94,.07)"></i><i style="background:rgba(34,197,94,.15)"></i><i style="background:rgba(34,197,94,.26)"></i><i style="background:rgba(34,197,94,.42)"></i><i style="background:rgba(34,197,94,.66)"></i></span>Bullish (calls bought near ask / puts sold near bid)</span><span><span class="sw"><i style="background:rgba(239,68,68,.07)"></i><i style="background:rgba(239,68,68,.15)"></i><i style="background:rgba(239,68,68,.26)"></i><i style="background:rgba(239,68,68,.42)"></i><i style="background:rgba(239,68,68,.66)"></i></span>Bearish (puts bought near ask / calls sold near bid)</span><span><span class="sw"><i style="background:rgba(140,140,150,.25)"></i></span>Neutral / mid / unknown</span><span>Brighter = larger premium AND nearer expiry, ranked vs. all of today's directional trades (vivid = top 3%, ≤14 DTE only; side is inferred)</span></div>
-    <div class="tablewrap">
-      <table class="flow" id="flow">
-        <thead><tr>
-          <th data-k="time">Time</th><th data-k="ticker">Ticker</th><th data-k="expiry">Expiry</th><th data-k="strike">Strike</th><th data-k="cp">C/P</th>
-          <th data-k="side">Side*</th><th data-k="spot">Spot</th><th data-k="last">Price</th><th data-k="vol">Size/Vol</th><th data-k="premium">Premium</th>
-          <th data-k="oi">OI</th><th data-k="vol_oi">Vol/OI</th><th data-k="iv">IV</th><th>Tags</th>
-        </tr></thead><tbody></tbody>
-      </table>
-    </div>
-    <div class="count" id="count"></div>
-  </section>
-</main>
-<section class="card sqradar" id="sqRadar"><div class="sqr-hd"><h3>Squeeze radar <small>(risk gauge, not confirmation)</small></h3><span class="muted" id="sqrMeta"></span>
-  <span class="sqr-leg"><i class="low"></i>&lt;40 <i class="watch"></i>40-59 watch <i class="cond"></i>60+ conditions · thin bars: <i class="st"></i>setup <i class="tr"></i>trigger</span></div><div class="sqr-grid" id="sqrBody"></div></section>
-<footer>Research based on public data — <b>not financial advice</b>. Verify independently and make your own decisions. Not affiliated with any flow-data vendor. *Side inferred, not confirmed. Premium ≈ day volume × last (or mid) × 100. GEX is an approximation from Black-Scholes gamma × OI, assuming dealers are long calls / short puts.</footer>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
-<script src="app.js"></script>
-<script src="chart.js"></script>
-<script src="history.js"></script>
-<div id="fcTip" class="fc-tip"></div>
-</body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Farrell Flow — retired</title>
+  <style>
+    body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0f17;color:#e6e9f0;
+      font:16px/1.5 system-ui,sans-serif;padding:24px}
+    main{max-width:36rem}
+    h1{font-size:1.4rem;margin:0 0 .5rem}
+    p{margin:.5rem 0;color:#aab3c5}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Farrell Flow has been shut down</h1>
+    <p>This public dashboard used free inferred options side data. After checking it against real buy/sell prints, it was not accurate enough to keep online.</p>
+    <p>Research only — not financial advice.</p>
+  </main>
+</body>
+</html>
